@@ -1,21 +1,17 @@
 import math
 import numpy as np
 
+from mayavi import mlab
+from tvtk.api import tvtk
+
 
 class PointObject:
     def __init__(self, I, J, K):
-        self.X = I
-        self.Y = J
-        self.Z = K
-
-        self.L=[]
-        self.R=[]
-        self.A=[]
+        self.X, self.Y, self.Z = I, J, K
+        self.L, self.R, self.A = [], [], []
 
     def translate_to_origin(self, index):
-        x0 = self.X[index]
-        y0 = self.Y[index]
-        z0 = self.Z[index]
+        x0, y0, z0 = self.X[index], self.Y[index], self.Z[index]
 
         for i in range(len(self.X)):
             self.X[i] -= x0
@@ -95,7 +91,6 @@ class PointObject:
         return distance
 
     def find_bends(self):
-
         for i in range(0, len(self.X) - 1):
             if i >= len(self.X) - 1:
                 self.L.append(0)
@@ -119,7 +114,43 @@ class PointObject:
                 matrix = self.rotation_matrix(self.find_rz(i + 1), 'z')
                 self.rotate(matrix)
 
+
+
         for l, r, a in zip(self.L, self.R, self.A):
             print(f"{l:.3f} {r:.3f} {a:.3f}")
         print()
         print()
+
+    def animate(self):
+        fig = mlab.figure(bgcolor=(1, 1, 1), fgcolor=(0, 0, 0), size=(640, 480))
+        mlab.view(azimuth=45, elevation=30, distance='auto')
+
+        # Initialize empty arrays with a specific size (e.g., 0)
+        x_data = np.zeros(0)
+        y_data = np.zeros(0)
+        z_data = np.zeros(0)
+
+        # Create the plot with empty arrays
+        line = mlab.plot3d(x_data, y_data, z_data, tube_radius=0.2, color=(0, 0, 1))
+
+        # Function to update the line data for animation
+        def update_line(num):
+            if num >= len(self.X) - 1:
+                return None, None, None
+            x = [self.X[num], self.X[num + 1]]
+            y = [self.Y[num], self.Y[num + 1]]
+            z = [self.Z[num], self.Z[num + 1]]
+            line.mlab_source.set(x=x, y=y, z=z)
+            return line
+
+        # Create an animation scene
+        anim = mlab.animate(update_line, frames=len(self.X) - 1, repeat=False)
+
+        # To save the animation as a video file (optional)
+        # anim.save('animation.mp4', writer='ffmpeg')
+
+        # Display the animation
+        mlab.show()
+
+
+
