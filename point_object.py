@@ -1,14 +1,12 @@
 import math
 import numpy as np
 
-from mayavi import mlab
-from tvtk.api import tvtk
-
 
 class PointObject:
     def __init__(self, I, J, K):
         self.X, self.Y, self.Z = I, J, K
         self.L, self.R, self.A = [], [], []
+        self.collision_count = 0
 
     def translate_to_origin(self, index):
         x0, y0, z0 = self.X[index], self.Y[index], self.Z[index]
@@ -91,66 +89,75 @@ class PointObject:
         return distance
 
     def find_bends(self):
-        for i in range(0, len(self.X) - 1):
-            if i >= len(self.X) - 1:
-                self.L.append(0)
-                self.R.append(0)
-                self.A.append(0)
-            elif i <= 0:
+
+        Xcopy, Ycopy, Zcopy = self.X.copy(), self.Y.copy(), self.Z.copy()
+
+        for i in range(0, len(self.X)):
+            if i >= len(self.X) - 1:  # last point
+                for l, r, a in zip(self.L, self.R, self.A):
+                    print(f"{l:.3f} {r:.3f} {a:.3f}")
+                print()
+                print()
+
+                self.X, self.Y, self.Z = Xcopy, Ycopy, Zcopy
+            elif i <= 0:  # first point
                 self.L.append(self.calculate_distance(i, i+1))
                 self.R.append(0)
                 self.A.append(0)
             else:
+                self.collision_detection(i)
+
                 self.translate_to_origin(i)
                 self.L.append(self.calculate_distance(i, i + 1))
+
+                self.collision_detection(i+1)
 
                 self.R.append(math.degrees(self.find_ry(i + 1)))
 
                 matrix = self.rotation_matrix(self.find_ry(i + 1), 'y')
                 self.rotate(matrix)
+                self.collision_detection(i+1)
 
                 self.A.append(math.degrees(self.find_rz(i + 1)))
 
                 matrix = self.rotation_matrix(self.find_rz(i + 1), 'z')
                 self.rotate(matrix)
+                self.collision_detection(i+1)
 
+    def collision_detection(self, start_index):
 
+        # collision zone in mm
+        limits = {
+            'x': [-150, 150],
+            'y': [-1000, -5],
+            'z': [-100, -5]
+        }
 
-        for l, r, a in zip(self.L, self.R, self.A):
-            print(f"{l:.3f} {r:.3f} {a:.3f}")
-        print()
-        print()
+        # Check if any point past the start_index lies inside the cube
+        for i in range(start_index, len(self.X)):
+            point = [self.X[i], self.Y[i], self.Z[i]]
+            if self.point_inside_cube(point, limits):
+                self.collision_count += 1
+                return True  # Collision detected
 
-    def animate(self):
-        fig = mlab.figure(bgcolor=(1, 1, 1), fgcolor=(0, 0, 0), size=(640, 480))
-        mlab.view(azimuth=45, elevation=30, distance='auto')
+        return False  # No collision
 
-        # Initialize empty arrays with a specific size (e.g., 0)
-        x_data = np.zeros(0)
-        y_data = np.zeros(0)
-        z_data = np.zeros(0)
+    @staticmethod
+    def point_inside_cube(point, limits):
+        """
+        Check if a point lies inside a cube defined by its x y and z limits
+        """
+        x, y, z = point
+        x_min, x_max = limits['x']
+        y_min, y_max = limits['y']
+        z_min, z_max = limits['z']
 
-        # Create the plot with empty arrays
-        line = mlab.plot3d(x_data, y_data, z_data, tube_radius=0.2, color=(0, 0, 1))
+        if (x_min < x < x_max) & (y_min < y < y_max) & (z_min < z < z_max):
+            return True  # Point lies inside the cube
 
-        # Function to update the line data for animation
-        def update_line(num):
-            if num >= len(self.X) - 1:
-                return None, None, None
-            x = [self.X[num], self.X[num + 1]]
-            y = [self.Y[num], self.Y[num + 1]]
-            z = [self.Z[num], self.Z[num + 1]]
-            line.mlab_source.set(x=x, y=y, z=z)
-            return line
+        return False  # Point does not lie inside the cube
 
-        # Create an animation scene
-        anim = mlab.animate(update_line, frames=len(self.X) - 1, repeat=False)
-
-        # To save the animation as a video file (optional)
-        # anim.save('animation.mp4', writer='ffmpeg')
-
-        # Display the animation
-        mlab.show()
-
-
-
+    # Add the following method to your PointObject class (in point_object.py)
+    def get_lra_data(self):
+        # Assuming you have arrays named L, R, and A
+        return [(round(l, 3), round(r, 3), round(a, 3)) for l, r, a in zip(self.L, self.R, self.A)]

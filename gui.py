@@ -6,74 +6,25 @@
 # pip install PyQt6
 # pip install PySide2
 
-from tkinter import *
 from tkinter import filedialog
 import copy
-import sys
-#from mayavi import mlab
+
 from point_object import PointObject
 import math
 import os
-import numpy as np
-
-import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
-
-
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from matplotlib.figure import Figure
-from matplotlib.ticker import NullFormatter
 
 class GUI:
-    def __init__(self, root):
+    def __init__(self, figure, canvas):
         # Initialize the Tkinter window
-        self.root = root
         self.point_objects = []
         self.plotIdx = 0
 
         # Arrays to store parsed data
-        self.i = []
-        self.j = []
-        self.k = []
+        self.i, self.j, self.k = [], [], []
 
-        self.root = root
-        self.point_objects = []
-        self.plotIdx = 0
+        self.figure, self.canvas = figure, canvas
 
-        # Initialize the grid layout
-        self.root.grid_rowconfigure(0, weight=1)  # Set row 0 to expand vertically
-        self.root.grid_columnconfigure(0, weight=1)  # Set column 0 to expand horizontally
-        self.root.grid_columnconfigure(1, weight=3)  # Set column 1 to expand horizontally (plot area)\
-
-        # Create a label for the file explorer
-
-        self.label_file_explorer = Label(root, text="Import File", font=("Helvetica", 16, "bold"))
-        self.label_file_explorer.grid(row=0, column=0, columnspan=6, padx=0, pady=5, sticky="nsew")
-
-        # Create buttons on the left side
-        self.button_explore = Button(root, text="Browse Files", command=self.browse_files)
-        self.button_explore.grid(row=1, column=0, padx=10, pady=1, sticky="ew")
-
-        self.button_print_csv = Button(root, text="Print CSV", command=self.print_csv)
-        self.button_print_csv.grid(row=2, column=0, padx=10, pady=1, sticky="ew")
-
-        self.button_perform_operations = Button(root, text="Convert Coordinate System", command=self.convert_coords)
-        self.button_perform_operations.grid(row=3, column=0, padx=10, pady=1, sticky="ew")
-
-        self.button_next_plot = Button(root, text="Next Plot", command=self.next)
-        self.button_next_plot.grid(row=4, column=0, padx=10, pady=1, sticky="ew")
-
-        self.button_calculate_bends = Button(root, text="Calculate Bends", command=self.calculate_bends)
-        self.button_calculate_bends.grid(row=5, column=0, padx=10, pady=1, sticky="ew")
-
-        # self.button_animate = Button(root, text="Animate", command=self.animate_plot)
-        # self.button_animate.grid(row=6, column=0, padx=10, pady=1, sticky="ew")
-
-
-        # Create the plot area on the right side
-        self.figure = Figure(figsize=(10, 7), dpi=100)
-        self.canvas = FigureCanvasTkAgg(self.figure, master=self.root)  # A tk.DrawingArea.
-        self.canvas.get_tk_widget().grid(row=6, column=2, rowspan=1, sticky="w", padx=10, pady=10)
+        self.convertedBool = False
 
     def calculate_distance(self, idx1, idx2):
         # Calculate Euclidean distance between points at idx1 and idx2
@@ -113,7 +64,7 @@ class GUI:
     def reorder_segments(self, segment_ends):
         while True:
             # Make a deep copy of the current state
-            i_copy, j_copy, k_copy = self.i[:], self.j[:], self.k[:]
+            i_copy, j_copy, k_copy = self.i.copy(), self.j.copy(), self.k.copy()
             reversed_segments = 0  # Variable to track the number of segments reversed in this iteration
 
             for segment in segment_ends:
@@ -151,18 +102,20 @@ class GUI:
 
     def clear_file(self):
         self.point_objects = []
-        self.i = []
-        self.j = []
-        self.k = []
+        self.i, self.j, self.k = [], [], []
+        self.plotIdx = 0
+        self.figure.clear()
+        self.convertedBool = False
 
-    def browse_files(self):
-        self.clear_file()
+
+    def browse_files(self, reorder, filter_straight):
         # Open a file explorer dialog to select a file
         filename = filedialog.askopenfilename(initialdir="/", title="Select a File",
                                               filetypes=( ("Text files", "*.txt"), ("All files", "*.*")))
         try:
             # Read the selected file and parse comma-separated values into i, j, and k arrays
             with open(filename, 'r') as file:
+                self.clear_file()
                 lines = file.readlines()
                 for line in lines:
                     values = line.strip().split(',')
@@ -175,12 +128,14 @@ class GUI:
             print("Error:", e)
 
         if len(self.i) > 0:
-            # Call segment_points to identify segments
-            segment_ends = self.segment_points()
-            # Call reorder_segments with segment_ends to reorder the points within each segment
-            self.reorder_segments(segment_ends)
 
-            self.filter_straight_sections()
+            if reorder == 1:
+                # Call segment_points to identify segments
+                segment_ends = self.segment_points()
+                # Call reorder_segments with segment_ends to reorder the points within each segment
+                self.reorder_segments(segment_ends)
+            if filter_straight == 1:
+                self.filter_straight_sections()
 
             point_object = PointObject(self.i, self.j, self.k)
             self.point_objects.append(point_object)
@@ -190,9 +145,7 @@ class GUI:
             self.point_objects.extend(new_point_objects)
         else:
             print("No data")
-
-        # Update the label to show the opened file
-        self.label_file_explorer.configure(text="Ready to Convert Coordinates: " + os.path.basename(filename))
+        return os.path.basename(filename)
 
     def filter_straight_sections(self):
         i_filtered, j_filtered, k_filtered = [], [], []
@@ -264,12 +217,15 @@ class GUI:
 
     def print_csv(self):
         # Check if there are elements in i, j, and k arrays
+        text_array = []
         if len(self.i) > 0 and len(self.j) > 0 and len(self.k) > 0:
             # Iterate through the arrays and print in the specified format
             for i_val, j_val, k_val in zip(self.i, self.j, self.k):
                 print(f"{i_val}, {j_val}, {k_val}")
+                text_array.append(f"{i_val}, {j_val}, {k_val}")
         else:
             print("No data to print.")
+        return text_array
 
     def convert_coords(self):
 
@@ -289,40 +245,63 @@ class GUI:
             rotation_matrix = points.rotation_matrix(points.find_rx2(1), 'x')
             points.rotate(rotation_matrix)
 
-            #nextBend = points.find_next_bend(0)
             rotation_matrix = points.rotation_matrix(points.find_ry2(2), 'y')
             points.rotate(rotation_matrix)
 
-        rotation_matrix = points.rotation_matrix(math.pi, 'y')
+        rotation_matrix = self.point_objects[0].rotation_matrix(math.pi, 'y')
 
         self.point_objects[1].rotate(rotation_matrix)
         self.point_objects[3].rotate(rotation_matrix)
 
-        # After the conversion, update the GUI asynchronously
-        self.collision_check()
-
+        self.convertedBool = True
         self.update_gui()
 
-        self.label_file_explorer.configure(text="Coordinates converted")
-        # self.root.after(10, self.update_gui)
-
-    def collision_check(self):
-        # to be implemented
-        # should define a collision rectangle using 8 points
-        # Return length 4 boolean array with true if the coordinate system has a collision and false if not
-        pass
-
-    import matplotlib.pyplot as plt
-    from mpl_toolkits.mplot3d import Axes3D
-
-    import matplotlib.pyplot as plt
-    from mpl_toolkits.mplot3d import Axes3D
-
-
-    def plot3d(self, point_object, title):
+    def plot3d(self, point_object, title, empty_bool):
         self.figure.clear()
         ax = self.figure.add_subplot(111, projection='3d')
 
+        # Remove default axes
+        ax.set_axis_off()
+
+        if empty_bool:
+            ax.set_xlim(-1, 1)
+            ax.set_ylim(-1, 1)
+            ax.set_zlim(-1, 1)
+            ax.set_box_aspect([2, 2, 2])
+            axis_length = 2
+        else:
+            # Set specific axis limits (calculate min and max values)
+            x_min = min(point_object.X)
+            x_max = max(point_object.X)
+            y_min = min(point_object.Y)
+            y_max = max(point_object.Y)
+            z_min = min(point_object.Z)
+            z_max = max(point_object.Z)
+
+            # Set axis limits
+            ax.set_xlim(x_min, x_max)
+            ax.set_ylim(y_min, y_max)
+            ax.set_zlim(z_min, z_max)
+            # Disable automatic scaling and set equal aspect ratio for all dimensions
+            ax.set_box_aspect([abs(x_max - x_min), abs(y_max - y_min), abs(z_max - z_min)])
+
+            axis_length = max(point_object.Y)
+
+        ax.plot([0, axis_length], [0, 0], [0, 0], color='red', linewidth=2, label='X-Axis')
+        ax.plot([0, 0], [0, axis_length], [0, 0], color='green', linewidth=2, label='Y-Axis')
+        ax.plot([0, 0], [0, 0], [0, axis_length], color='blue', linewidth=2, label='Z-Axis')
+
+        # Set labels and title
+        ax.set_xlabel('X Label')
+        ax.set_ylabel('Y Label')
+        ax.set_zlabel('Z Label')
+        ax.set_title(title)
+
+        ax.view_init(elev=30, azim=45)  # isometric view
+
+        if empty_bool:
+            self.canvas.draw()
+            return
 
         # Plot points
         ax.scatter(point_object.X, point_object.Y, point_object.Z, c='b', marker='o', label='Points')
@@ -331,228 +310,29 @@ class GUI:
         for i in range(0, len(point_object.X) - 1):
             ax.plot([point_object.X[i], point_object.X[i + 1]],
                     [point_object.Y[i], point_object.Y[i + 1]],
-                    [point_object.Z[i], point_object.Z[i + 1]], c='b')
-
-        # Remove default axes
-        ax.set_axis_off()
-
-        # Draw X, Y, and Z axis lines with equal lengths
-        axis_length = max(point_object.Y)
-        ax.plot([0, axis_length], [0, 0], [0, 0], color='red', linewidth=2, label='X-Axis')
-        ax.plot([0, 0], [0, axis_length], [0, 0], color='green', linewidth=2, label='Y-Axis')
-        ax.plot([0, 0], [0, 0], [0, axis_length], color='blue', linewidth=2, label='Z-Axis')
-
-        # Set specific axis limits (calculate min and max values)
-        x_min = min(point_object.X)
-        x_max = max(point_object.X)
-        y_min = min(point_object.Y)
-        y_max = max(point_object.Y)
-        z_min = min(point_object.Z)
-        z_max = max(point_object.Z)
-
-        # Set axis limits
-        ax.set_xlim(x_min, x_max)
-        ax.set_ylim(y_min, y_max)
-        ax.set_zlim(z_min, z_max)
-
-        # Disable automatic scaling and set equal aspect ratio for all dimensions
-        ax.set_box_aspect([abs(x_max - x_min), abs(y_max - y_min), abs(z_max - z_min)])
-
-        # Set labels and title
-        ax.set_xlabel('X Label')
-        ax.set_ylabel('Y Label')
-        ax.set_zlabel('Z Label')
-        ax.set_title(title)
-
-        ax.view_init(elev=30, azim=45)
+                    [point_object.Z[i], point_object.Z[i + 1]], c='black')
 
         # Redraw the canvas
         self.canvas.draw()
 
-    # def animate_plot(self):
-    #     self.i, self.j, self.k = [], [], []
-    #     self.i.append(0), self.j.append(0), self.k.append(0)
-    #     self.figure.clear()
-    #     ax = self.figure.add_subplot(111, projection='3d')
-    #
-    #     def translate(distance):
-    #         self.j = [j + distance for j in self.j]
-    #
-    #     def rotate_z(angle):
-    #         radians = math.radians(angle)
-    #         matrix = np.array([[math.cos(radians), -math.sin(radians), 0],
-    #                            [math.sin(radians), math.cos(radians), 0],
-    #                            [0, 0, 1]])
-    #
-    #         # Create 3x1 column vectors for x, y, z arrays
-    #         vectors = np.vstack((self.i, self.j, self.k))
-    #         # Perform matrix multiplication
-    #         rotated_vectors = np.dot(matrix, vectors)
-    #         # Update x, y, z arrays with the rotated vectors
-    #         self.i, self.j, self.k = rotated_vectors
-    #
-    #     def rotate_y(angle):
-    #         radians = math.radians(angle)
-    #         matrix = np.array([[math.cos(radians), 0, math.sin(radians)],
-    #                            [0, 1, 0],
-    #                            [-1 * math.sin(radians), 0, math.cos(radians)]])
-    #
-    #         # Create 3x1 column vectors for x, y, z arrays
-    #         vectors = np.vstack((self.i, self.j, self.k))
-    #         # Perform matrix multiplication
-    #         rotated_vectors = np.dot(matrix, vectors)
-    #         # Update x, y, z arrays with the rotated vectors
-    #         self.i, self.j, self.k = rotated_vectors
-    #
-    #     def update(frame):
-    #         ax.clear()
-    #         # Plot points
-    #         for i in range(0, len(self.i) - 1):
-    #             ax.scatter(self.i[i], self.j[i], self.k[i], c='b', marker='o', label='Points')
-    #
-    #         # Draw lines between points
-    #         # if frame > 0:
-    #         #     ax.plot(self.i[:frame], self.j[:frame], self.k[:frame], c='b')
-    #         #
-    #
-    #         translate(self.point_objects[self.plotIdx].L[frame])
-    #         self.i.append(0), self.j.append(0), self.k.append(0)
-    #         rotate_z(self.point_objects[self.plotIdx].A[frame])
-    #         rotate_y(self.point_objects[self.plotIdx].R[frame])
-    #
-    #     anim = FuncAnimation(self.figure, update, frames=len(self.point_objects[0].L), repeat=False, blit=False)
-    #
-    #     # Set specific axis limits (calculate min and max values)
-    #     x_min = min(self.point_objects[0].X)
-    #     x_max = max(self.point_objects[0].X)
-    #     y_min = min(self.point_objects[0].Y)
-    #     y_max = max(self.point_objects[0].Y)
-    #     z_min = min(self.point_objects[0].Z)
-    #     z_max = max(self.point_objects[0].Z)
-    #
-    #     # Set axis limits
-    #     ax.set_xlim(x_min, x_max)
-    #     ax.set_ylim(y_min, y_max)
-    #     ax.set_zlim(z_min, z_max)
-    #
-    #     axis_length = x_max
-    #     ax.plot([0, axis_length], [0, 0], [0, 0], color='red', linewidth=2, label='X-Axis')
-    #     ax.plot([0, 0], [0, axis_length], [0, 0], color='green', linewidth=2, label='Y-Axis')
-    #     ax.plot([0, 0], [0, 0], [0, axis_length], color='blue', linewidth=2, label='Z-Axis')
-    #
-    #     # Remove default axes
-    #     ax.set_axis_off()
-    #
-    #     # Disable automatic scaling and set equal aspect ratio for all dimensions
-    #     ax.set_box_aspect([abs(x_max - x_min), abs(y_max - y_min), abs(z_max - z_min)])
-    #
-    #     # Set labels and title
-    #     ax.set_xlabel('X Label')
-    #     ax.set_ylabel('Y Label')
-    #     ax.set_zlabel('Z Label')
-    #
-    #     ax.view_init(elev=30, azim=45)
-    #
-    #     def update(frame):
-    #         ax.clear()
-    #         # Plot points
-    #         for i in range(0, len(self.i) - 1):
-    #             ax.scatter(self.i[i], self.j[i], self.k[i], c='b', marker='o', label='Points')
-    #
-    #         # Draw lines between points
-    #         # if frame > 0:
-    #         #     ax.plot(self.i[:frame], self.j[:frame], self.k[:frame], c='b')
-    #         #
-    #
-    #         translate(self.point_objects[self.plotIdx].L[frame])
-    #         self.i.append(0), self.j.append(0), self.k.append(0)
-    #         rotate_z(self.point_objects[self.plotIdx].A[frame])
-    #         rotate_y(self.point_objects[self.plotIdx].R[frame])
-    #
-    #     anim = FuncAnimation(self.figure, update, frames=len(self.point_objects[0].L), repeat=False, blit=False)
-    #
-    #     self.canvas.draw()
-
-    # @staticmethod
-    # def plot3d(point_object, title):
-    #     # pass
-    #     mlab.figure(bgcolor=(1, 1, 1), fgcolor=(0, 0, 0), size=(640, 480))
-    #
-    #     # Draw axes starting from the origin
-    #     # X axis is red, Y axis is green, Z axis is blue
-    #     origin = [0, 0, 0]
-    #     axes_length = max(max(point_object.X), max(point_object.Y), max(point_object.Z))
-    #     mlab.plot3d([origin[0], axes_length], [origin[1], origin[1]], [origin[2], origin[2]], color=(1, 0, 0), tube_radius=0.2, line_width=0.2)
-    #     mlab.plot3d([origin[0], origin[0]], [origin[1], axes_length], [origin[2], origin[2]], color=(0, 1, 0), tube_radius=0.2, line_width=0.2)
-    #     mlab.plot3d([origin[0], origin[0]], [origin[1], origin[1]], [origin[2], axes_length], color=(0, 0, 1), tube_radius=0.2, line_width=0.2)
-    #
-    #     # Plot larger points as spheres
-    #     mlab.points3d(point_object.X, point_object.Y, point_object.Z, color=(0, 0, 1), mode='sphere', scale_factor=1.5)
-    #
-    #     # Draw lines between points
-    #     for i in range(len(point_object.X) - 1):
-    #         x = [point_object.X[i], point_object.X[i + 1]]
-    #         y = [point_object.Y[i], point_object.Y[i + 1]]
-    #         z = [point_object.Z[i], point_object.Z[i + 1]]
-    #         mlab.plot3d(x, y, z, color=(0, 0, 1), tube_radius=.75)
-    #
-    #     # Set title font size to 14
-    #     # mlab.title(title, height=0.04)
-    #
-    #     mlab.show()
-
     def calculate_bends(self):
         for points in self.point_objects:
             points.find_bends()
-        self.label_file_explorer.configure(text=f'Bends Calculated')
 
-
-        # calculator = BendCalculator(self.point_objects)
-        # bends = calculator.find_bends()
-
-    def amimation(self):
-        self.point_objects[self.plotIdx].animate()
-
-
-    def next(self):
-        self.update_gui()
-
-    def update_gui(self):
-        # Update GUI elements here if necessary
-        print("Coordinates Converted")
-
-        self.plot3d(self.point_objects[self.plotIdx], f'PointObject {self.plotIdx + 1}')
-        print(f"PointObject {self.plotIdx + 1} coordinates:")
-        self.point_objects[self.plotIdx].print_contents()
-        print()  # Add an empty line for better readability between PointObjects
-        self.label_file_explorer.configure(text=f'Coordinate system {self.plotIdx + 1} Plotted')
+    def incrementIdx(self):
         if self.plotIdx >= 3:
             self.plotIdx = 0
         else:
             self.plotIdx += 1
 
+    def next(self):
+        self.update_gui()
 
-        # # Generate 3D plots for each PointObject instance
-        # for idx, point_object in enumerate(self.point_objects):
-        #     self.plot3d(point_object, f'PointObject {idx + 1}')
-        #     print(f"PointObject {idx + 1} coordinates:")
-        #     point_object.print_contents()
-        #     print()  # Add an empty line for better readability between PointObjects
+    def update_gui(self):
+        # Update GUI elements here
+        print("Coordinates Converted")
 
-
-if __name__ == "__main__":
-    window = Tk()
-    window.title('Wire Bender SW')
-    window.geometry("1200x960")
-    window.config(background="white")
-    gui = GUI(window)
-
-    # # Create a 'Print CSV' button and associate it with the print_csv method
-    # button_print_csv = Button(window, text="Print CSV", command=gui.print_csv)
-    # button_print_csv.grid(column=1, row=3)
-    #
-    # button_perform_operations = Button(window, text="Convert Coordinate System", command=gui.convert_coords)
-    # button_perform_operations.grid(column=1, row=4)
-
-    window.mainloop()
-
+        self.plot3d(self.point_objects[self.plotIdx], f'PointObject {self.plotIdx + 1}', False)
+        print(f"PointObject {self.plotIdx + 1} coordinates:")
+        self.point_objects[self.plotIdx].print_contents()
+        print()  # Add an empty line for better readability between PointObjects
