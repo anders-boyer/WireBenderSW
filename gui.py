@@ -3,7 +3,7 @@ from tkinter import *
 from tkinter import ttk, messagebox  # Import ttk for themed widgets
 from tkinter import filedialog
 
-from BenderGCode import BenderGCode
+from bender_gcode import benderGCode
 from import_coords import importCoords
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
@@ -295,7 +295,7 @@ class GUI:
     def updateCodeBox(self):
         self.codebox.delete(0, END)
         pointObject = self.gui.point_objects[self.gui.plotIdx]
-        gCode = BenderGCode(pointObject)
+        gCode = benderGCode(pointObject)
         self.gCodeString = gCode.generate_gcode()
 
         for elem in self.gCodeString:

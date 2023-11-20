@@ -1,7 +1,7 @@
 #from point_object import pointObject
 
 
-class BenderGCode:
+class benderGCode:
     # References:
     # https://howtomechatronics.com/tutorials/g-code-explained-list-of-most-important-g-code-commands/
     # https://www.cnccookbook.com/g-code-basics-program-format-structure-blocks/
@@ -94,8 +94,6 @@ class BenderGCode:
 
         gCode.append("%")
         return gCode
-
-
 
 
     # def add_gcode_line(self, line):
