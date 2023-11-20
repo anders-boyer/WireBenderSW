@@ -1,338 +1,315 @@
-# create a virtual environment for your interpreter and install these packages:
-# use python 3.9
-# pip install -r requirements.txt
-# or
-# pip install mayavi
-# pip install PyQt6
-# pip install PySide2
 
+from tkinter import *
+from tkinter import ttk, messagebox  # Import ttk for themed widgets
 from tkinter import filedialog
-import copy
 
-from point_object import PointObject
-import math
-import os
+from BenderGCode import BenderGCode
+from import_coords import importCoords
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.figure import Figure
+from point_object import pointObject
+
 
 class GUI:
-    def __init__(self, figure, canvas):
-        # Initialize the Tkinter window
-        self.point_objects = []
-        self.plotIdx = 0
+    def __init__(self, root):
 
-        # Arrays to store parsed data
-        self.i, self.j, self.k = [], [], []
+        self.gCodeString = []
+        self.root = root
+        self.filename = ""
 
-        self.figure, self.canvas = figure, canvas
+        Grid.rowconfigure(root, 0, weight=1)
+        Grid.rowconfigure(root, 1, weight=1)
+        Grid.rowconfigure(root, 2, weight=30)
+        Grid.rowconfigure(root, 3, weight=1)
+        Grid.rowconfigure(root, 4, weight=30)
+        Grid.columnconfigure(root, 0, weight=80)
+        Grid.columnconfigure(root, 1, weight=80)
+        Grid.columnconfigure(root, 2, weight=1)
+        Grid.columnconfigure(root, 3, weight=100)
 
-        self.convertedBool = False
+        # Create & Configure frame
+        frame = Frame(root)
+        frame.grid(row=0, column=0, sticky=N + S + E + W)
 
-    def calculate_distance(self, idx1, idx2):
-        # Calculate Euclidean distance between points at idx1 and idx2
-        distance = math.sqrt((self.i[idx2] - self.i[idx1])**2 +
-                             (self.j[idx2] - self.j[idx1])**2 +
-                             (self.k[idx2] - self.k[idx1])**2)
-        return distance
+        self.button_calculate_bends = Button(root, text="Calculate Bends", command=self.calculate_bends_popup, state="disabled")
+        self.button_calculate_bends.grid(row=0, column=0, columnspan=2, padx=15, pady=2, sticky="nsew")
 
-    def segment_points(self):
-        segment_ends = []  # Initialize as an empty list, no need for the initial (0, 0) tuple
-        threshold_multiplier = 1.05
+        self.codeLabel = Label(root, text="Bend Table")
+        self.codeLabel.grid(row=1, column=0, padx=0, pady=0, sticky="sew", columnspan=3)
 
-        for i in range(1, len(self.i)):
-            # Calculate the distance between the current point (i) and the point at (i-1)
-            distance = self.calculate_distance(i, i - 1)
+        self.collision_label = Label(root, text="")
+        self.collision_label.grid(row=0, column=3, padx=0, pady=0, sticky="nsew")
 
-            if i >= 2:
-                # Calculate the threshold based on 1.1 times the distance from point (i-1) and (i-2)
-                threshold = threshold_multiplier * self.calculate_distance(i - 1, i - 2)
-            else:
-                # For the first point, set the threshold to a high value to prevent an out-of-bounds error
-                threshold = float('inf')
+        self.bend_table = ttk.Treeview(window, selectmode='browse')
+        self.bend_table.grid(row=2, column=0, padx=15, pady=0, sticky="nsew", columnspan=2)
+        self.scrollbar1 = Scrollbar(root)
+        self.scrollbar1.grid(row=2, column=2, padx=0, pady=5, sticky="nsew")
+        self.bend_table.config(yscrollcommand=self.scrollbar1.set)
+        # setting scrollbar command parameter
+        # to listbox.yview method its yview because
+        # we need to have a vertical view
+        self.scrollbar1.config(command=self.bend_table.yview)
 
-            # If the distance between the current point and the previous point is greater than the threshold, consider it a segment end
-            if distance > threshold:
-                # Get the end index of the last segment in segment_ends list
-                last_end_idx = segment_ends[-1][1] if segment_ends else -1
-                # Append the segment indices as a tuple to segment_ends list, starting from the next index after the last segment
-                segment_ends.append((last_end_idx + 1, i - 1))
+        self.bend_table["columns"] = (
+            "1", "2", "3", "4", "5")
 
-        # If there are segments, add the last point as a segment end
-        if segment_ends:
-            segment_ends.append((segment_ends[-1][1] + 1, len(self.i) - 1))
+        self.bend_table['show'] = 'headings'
 
-        return segment_ends
-
-    def reorder_segments(self, segment_ends):
-        while True:
-            # Make a deep copy of the current state
-            i_copy, j_copy, k_copy = self.i.copy(), self.j.copy(), self.k.copy()
-            reversed_segments = 0  # Variable to track the number of segments reversed in this iteration
-
-            for segment in segment_ends:
-                start_idx, end_idx = segment
-                if self.should_reverse_segment(start_idx, end_idx):
-                    reversed_segment = self.reverse_segment(start_idx, end_idx)
-                    i_copy[start_idx:end_idx + 1] = reversed_segment[0]
-                    j_copy[start_idx:end_idx + 1] = reversed_segment[1]
-                    k_copy[start_idx:end_idx + 1] = reversed_segment[2]
-                    reversed_segments += 1  # Increment the count of reversed segments
-
-            # If no segments were reversed, the arrangement is optimized, break the loop
-            if reversed_segments == 0:
-                break
-
-            # Update the points with the reordered segments
-            self.i, self.j, self.k = i_copy, j_copy, k_copy
-
-    def should_reverse_segment(self, start_idx, end_idx):
-        # Check if reversing the segment would result in shorter distances between points
-        if start_idx <= 1:
-            original_distance = self.calculate_distance(end_idx, end_idx + 1)
-            reversed_distance = self.calculate_distance(start_idx, end_idx + 1)
-        elif end_idx >= len(self.i) - 1:
-            original_distance = self.calculate_distance(start_idx - 1, start_idx)
-            reversed_distance = self.calculate_distance(start_idx - 1, end_idx)
-        else:
-            original_distance = (self.calculate_distance(start_idx, start_idx - 1) + self.calculate_distance(end_idx, end_idx + 1))
-            reversed_distance = self.calculate_distance(start_idx, end_idx) + self.calculate_distance(start_idx, end_idx + 1)
-        return reversed_distance < original_distance
-
-    def reverse_segment(self, start_idx, end_idx):
-        # Reverse the order of points in the segment defined by start_idx and end_idx
-        return self.i[start_idx:end_idx + 1][::-1], self.j[start_idx:end_idx + 1][::-1], self.k[start_idx:end_idx + 1][::-1]
-
-    def clear_file(self):
-        self.point_objects = []
-        self.i, self.j, self.k = [], [], []
-        self.plotIdx = 0
-        self.figure.clear()
-        self.convertedBool = False
+        self.bend_table.column("1", width=2, anchor='c')
+        self.bend_table.column("2", width=2, anchor='c')
+        self.bend_table.column("3", width=2, anchor='c')
+        self.bend_table.column("4", width=40, anchor='c')
+        self.bend_table.column("5", width=2, anchor='c')
 
 
-    def browse_files(self, reorder, filter_straight):
-        # Open a file explorer dialog to select a file
-        filename = filedialog.askopenfilename(initialdir="/", title="Select a File",
-                                              filetypes=( ("Text files", "*.txt"), ("All files", "*.*")))
-        try:
-            # Read the selected file and parse comma-separated values into i, j, and k arrays
-            with open(filename, 'r') as file:
-                self.clear_file()
-                lines = file.readlines()
-                for line in lines:
-                    values = line.strip().split(',')
-                    if len(values) == 3:
-                        self.i.append(float(values[0]))
-                        self.j.append(float(values[1]))
-                        self.k.append(float(values[2]))
-        except Exception as e:
-            # Handle file reading errors
-            print("Error:", e)
+        self.bend_table.heading("1", text="Length (mm)")
+        self.bend_table.heading("2", text="Rotation (degrees)")
+        self.bend_table.heading("3", text="Desired Angle (degrees)")
+        self.bend_table.heading("4", text="Angle + springback (degrees)")
+        self.bend_table.heading("5", text="Motor Angle (degrees)")
 
-        if len(self.i) > 0:
 
-            if reorder == 1:
-                # Call segment_points to identify segments
-                segment_ends = self.segment_points()
-                # Call reorder_segments with segment_ends to reorder the points within each segment
-                self.reorder_segments(segment_ends)
-            if filter_straight == 1:
-                self.filter_straight_sections()
+        # self.bendbox = Listbox(root)#, width=20, height=30)
+        # self.bendbox.grid(row=2, column=0, padx=15, pady=0, sticky="nsew", columnspan=2)
+        # self.scrollbar1 = Scrollbar(root)
+        # self.scrollbar1.grid(row=2, column=2, padx=0, pady=0, sticky="nsew")
+        # # Insert elements into the listbox
+        # # for values in range(100):
+        # #     self.bendbox.insert(END, values)
+        #     # Attaching Listbox to Scrollbar
+        # # Since we need to have a vertical
+        # # scroll we use yscrollcommand
+        # self.bendbox.config(yscrollcommand=self.scrollbar1.set)
+        # # setting scrollbar command parameter
+        # # to listbox.yview method its yview because
+        # # we need to have a vertical view
+        # self.scrollbar1.config(command=self.bendbox.yview)
 
-            point_object = PointObject(self.i, self.j, self.k)
-            self.point_objects.append(point_object)
-            # Create deep copies of the first PointObject instance
-            new_point_objects = [copy.deepcopy(self.point_objects[0]) for _ in range(3)]
-            # Update point_objects list with the new PointObject instances
-            self.point_objects.extend(new_point_objects)
-        else:
-            print("No data")
-        return os.path.basename(filename)
+        self.codeLabel = Label(root, text="Point Cloud")
+        self.codeLabel.grid(row=3, column=0, padx=0, pady=0, sticky="sew", columnspan=3)
 
-    def filter_straight_sections(self):
-        i_filtered, j_filtered, k_filtered = [], [], []
+        self.codebox = Listbox(root)#, width=20, height=40)
+        self.codebox.grid(row=4, column=0, padx=15, pady=5, sticky="nsew", columnspan=2)
+        self.scrollbar2 = Scrollbar(root)
+        self.scrollbar2.grid(row=4, column=2, padx=0, pady=5, sticky="nsew")
+        # Insert elements into the listbox
+        # for values in range(100):
+        #     self.codebox.insert(END, values)
+            # Attaching Listbox to Scrollbar
+        # Since we need to have a vertical
+        # scroll we use yscrollcommand
+        self.codebox.config(yscrollcommand=self.scrollbar2.set)
+        # setting scrollbar command parameter
+        # to listbox.yview method its yview because
+        # we need to have a vertical view
+        self.scrollbar2.config(command=self.codebox.yview)
 
-        # Initialize start and end indices of straight segments
-        start_idx = 0
-        end_idx = 1
+        # Create the plot area on the right side
+        self.figure = Figure(dpi=100)
+        self.canvas = FigureCanvasTkAgg(self.figure, master=root)  # A tk.DrawingArea.
+        self.canvas.get_tk_widget().grid(row=1, column=3, sticky="nsew", rowspan=4, padx=0, pady=0)
 
-        i_filtered.append(self.i[start_idx])
-        j_filtered.append(self.j[start_idx])
-        k_filtered.append(self.k[start_idx])
-        while start_idx < len(self.i) - 3:
+        self.gui = importCoords(self.figure, self.canvas)
 
-            # Find the end index of the current straight segment
-            while end_idx <= len(self.i) - 2 and self.is_straight_segment(start_idx, end_idx):
-                end_idx += 1
-            # Add start and end points of the straight segment to filtered lists
+        # Create menu bar
+        self.menubar = Menu(root)
 
-            i_filtered.append(self.i[end_idx])
-            j_filtered.append(self.j[end_idx])
-            k_filtered.append(self.k[end_idx])
+        # Create "File" menu
+        self.file_menu = Menu(self.menubar, tearoff=0)
+        self.file_menu.add_command(label="Import", command=self.show_import_popup)
+        self.file_menu.add_command(label="Export G-Code", command=self.export_action, state="disabled")
+        self.menubar.add_cascade(label="File", menu=self.file_menu)
 
-            # Move start index to the next potential straight segment
-            start_idx = end_idx
-            end_idx = end_idx + 1
+        # Attach menu bar to the root window
+        root.config(menu=self.menubar)
 
-        # Update self.i, self.j, and self.k with filtered values
-        self.clear_file()
-        self.i, self.j, self.k = i_filtered, j_filtered, k_filtered
+        i, j, k = [0], [0], [0]
+        tempObj = pointObject(i, j, k)
+        self.gui.plot3d(tempObj, "", True)
 
-    def is_straight_segment(self, start_idx, end_idx):
-        angle_threshold_degrees = 0.2
+    def show_import_popup(self):
+        # Create a Toplevel window (popup)
+        import_popup = Toplevel()
+        import_popup.title("Import Options")
 
-        # Check if the segment defined by idx and end idx is straight
-        # Calculate the angle between the vectors using atan2
-        start_vector = (self.i[start_idx + 1] - self.i[start_idx], self.j[start_idx + 1] - self.j[start_idx], self.k[start_idx + 1] - self.k[start_idx])
-        next_vector = (self.i[end_idx + 1] - self.i[end_idx], self.j[end_idx + 1] - self.j[end_idx], self.k[end_idx + 1] - self.k[end_idx])
+        # Dropdown for file selection
+        file_label = Label(import_popup, text="File Type:")
+        file_label.grid(row=0, column=0, padx=10, pady=5, sticky="w")
 
-        cross_product = (
-            start_vector[1] * next_vector[2] - start_vector[2] * next_vector[1],
-            start_vector[2] * next_vector[0] - start_vector[0] * next_vector[2],
-            start_vector[0] * next_vector[1] - start_vector[1] * next_vector[0]
+        file_options = ["TXT", "CSV"]  # Add more options if needed
+        selected_file = StringVar()
+        file_combobox = ttk.Combobox(import_popup, textvariable=selected_file, values=file_options)
+        file_combobox.grid(row=0, column=1, padx=10, pady=5, sticky="w")
+        file_combobox.set(file_options[0])  # Set default selection
+
+        # Checkbutton for straight section filtering
+        straight_filter_var = IntVar()
+        straight_filter_var.set(1)
+        straight_filter_checkbox = Checkbutton(import_popup, text="Straight Section Filtering?", variable=straight_filter_var)
+        straight_filter_checkbox.grid(row=1, column=0, padx=10, pady=5, sticky="w")
+
+        # Checkbutton for segment reordering
+        reorder_var = IntVar()
+        reorder_var.set(1)
+        reorder_checkbox = Checkbutton(import_popup, text="Segment Reordering (did you use the provided SolidWorks macro?)", variable=reorder_var)
+        reorder_checkbox.grid(row=2, column=0, columnspan=2, padx=10, pady=5, sticky="w")
+
+        # Next button
+        next_button = Button(import_popup, text="Next", command=lambda: self.import_next(import_popup, selected_file.get(), straight_filter_var.get(), reorder_var.get()))
+        next_button.grid(row=3, column=0, columnspan=2, pady=10)
+
+    def import_next(self, import_popup, file_type, straight_filter, reorder_option):
+        # Handle the import options and close the popup
+        # print("File Type:", file_type)
+        # print("Straight Filter:", straight_filter)
+        # print("Segment Reordering:", reorder_option)
+
+        self.filename = self.gui.browse_files(reorder_option, straight_filter)
+        self.gui.plot3d(self.gui.point_objects[0], self.filename, False)
+
+        self.button_calculate_bends.config(text="Calculate Bends", command=self.calculate_bends_popup, state="normal")
+
+        text_array = self.gui.print_csv()
+
+        self.bend_table.delete(*self.bend_table.get_children())
+        self.codebox.delete(0, END)
+        self.gCodeString = []
+
+        for elem in text_array:
+            self.codebox.insert(END, elem)
+
+        # Close the import popup
+        import_popup.destroy()
+
+    def export_action(self):
+        # Open a file dialog for saving the G-code file
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".gcode",
+            filetypes=[("G-code", "*.gcode"), ("All files", "*.*")],
+            initialfile=self.filename.split('.')[0]  # Use the default name without extension
         )
 
-        dot_product = sum(a * b for a, b in zip(start_vector, next_vector))
-        angle_rad = math.atan2(math.sqrt(sum(c ** 2 for c in cross_product)), dot_product)
+        # Check if a file path was chosen
+        if file_path:
+            # Save the G-code content to the chosen file
+            with open(file_path, 'w') as file:
+                for line in self.gCodeString:
+                    file.write(line + '\n')
 
-        # Convert the threshold from degrees to radians for comparison
-        angle_threshold_rad = math.radians(angle_threshold_degrees)
+            # Inform the user that the file has been saved
+            messagebox.showinfo("Save Complete", f"File saved at:\n{file_path}")
 
-        # Return True if the angle is below the threshold (segment is straight), False otherwise
-        return angle_rad < angle_threshold_rad
+    def calculate_bends_popup(self):
 
-    # not used
-    def get_coord(self, column_index, element_index):
-        try:
-            # Retrieve the specified element from i, j, or k arrays based on column_index
-            if column_index == 'i':
-                return self.i[element_index - 1]
-            elif column_index == 'j':
-                return self.j[element_index - 1]
-            elif column_index == 'k':
-                return self.k[element_index - 1]
-            else:
-                return None
-        except IndexError:
-            # Handle index out of range errors
-            return None
+        # Create a Toplevel window (popup)
+        calculate_bends_popup = Toplevel()
+        calculate_bends_popup.title("Calculate Bends")
 
-    def print_csv(self):
-        # Check if there are elements in i, j, and k arrays
-        text_array = []
-        if len(self.i) > 0 and len(self.j) > 0 and len(self.k) > 0:
-            # Iterate through the arrays and print in the specified format
-            for i_val, j_val, k_val in zip(self.i, self.j, self.k):
-                print(f"{i_val}, {j_val}, {k_val}")
-                text_array.append(f"{i_val}, {j_val}, {k_val}")
-        else:
-            print("No data to print.")
-        return text_array
+        # Dropdown for bend pin selection
+        bend_pin_label = Label(calculate_bends_popup, text="Bend Pin Location:")
+        bend_pin_label.grid(row=0, column=0, padx=10, pady=5, sticky="w")
+        pin_options = ["6 mm", "10 mm", "14 mm"]
+        selected_pin = StringVar()
+        file_combobox = ttk.Combobox(calculate_bends_popup, textvariable=selected_pin, values=pin_options)
+        file_combobox.grid(row=0, column=1, padx=10, pady=5, sticky="w")
+        file_combobox.set(pin_options[1])  # Set default selection
 
-    def convert_coords(self):
+        # Dropdown for material selection
+        material_label = Label(calculate_bends_popup, text="Material:")
+        material_label.grid(row=1, column=0, padx=10, pady=5, sticky="w")
+        material_options = ["spring steel", "stainless steel", "mild steel", "aluminum"]
+        material_option = StringVar()
+        file_combobox = ttk.Combobox(calculate_bends_popup, textvariable=material_option, values=material_options)
+        file_combobox.grid(row=1, column=1, padx=10, pady=5, sticky="w")
+        file_combobox.set(material_options[0])  # Set default selection
 
-        if len(self.point_objects) > 0:
-            self.point_objects[2].reverse_order()
-            self.point_objects[3].reverse_order()
-        else:
-            print("No PointObject instances to convert.")
-            return
+        # Dropdown for diameter selection
+        diameter_label = Label(calculate_bends_popup, text="Wire Diameter")
+        diameter_label.grid(row=2, column=0, padx=10, pady=5, sticky="w")
+        diameter_options = ["0.5 mm", "0.75 mm", "1 mm", "1.5 mm", "2 mm"]
+        diameter_option = StringVar()
+        file_combobox = ttk.Combobox(calculate_bends_popup, textvariable=diameter_option, values=diameter_options)
+        file_combobox.grid(row=2, column=1, padx=10, pady=5, sticky="w")
+        file_combobox.set(diameter_options[2])  # Set default selection
 
-        for points in self.point_objects:
-            points.translate_to_origin(0)
+        # Checkbutton for straight section filtering
+        orientation_var = IntVar()
+        orientation_var.set(1)
+        orientation_checkbox = Checkbutton(calculate_bends_popup, text="Show best orientation only (lowest collisions)",variable=orientation_var)
+        orientation_checkbox.grid(row=3, column=0, padx=10, pady=5, sticky="w")
 
-            rotation_matrix = points.rotation_matrix(points.find_rz2(1), 'z')
-            points.rotate(rotation_matrix)
+        # Next button
+        next_button = Button(calculate_bends_popup, text="Next", command=lambda: self.calc_bends_next(calculate_bends_popup, selected_pin.get(), material_option.get(), diameter_option.get(), orientation_var.get()))
+        next_button.grid(row=4, column=0, columnspan=2, pady=10)
 
-            rotation_matrix = points.rotation_matrix(points.find_rx2(1), 'x')
-            points.rotate(rotation_matrix)
+    def calc_bends_next(self, calculate_bends_popup, pin, material, diameter, orientation):
 
-            rotation_matrix = points.rotation_matrix(points.find_ry2(2), 'y')
-            points.rotate(rotation_matrix)
+        self.gui.convert_coords()
+        self.button_calculate_bends.config(text="Next Plot", command=self.next)
+        self.gui.calculate_bends()
+        self.collision_label.config(
+            text=f'This orientation has {self.gui.point_objects[self.gui.plotIdx].collision_count} collisions')
 
-        rotation_matrix = self.point_objects[0].rotation_matrix(math.pi, 'y')
+        if orientation == 1:
+            min_collisions = 111111111111111
+            min_idx = 4
 
-        self.point_objects[1].rotate(rotation_matrix)
-        self.point_objects[3].rotate(rotation_matrix)
+            for i in range(0, len(self.gui.point_objects)):
+                collision_count = self.gui.point_objects[self.gui.plotIdx].collision_count
+                if collision_count < min_collisions:
+                    min_collisions = collision_count
+                    min_idx = i
 
-        self.convertedBool = True
-        self.update_gui()
+            self.gui.plotIdx = min_idx
 
-    def plot3d(self, point_object, title, empty_bool):
-        self.figure.clear()
-        ax = self.figure.add_subplot(111, projection='3d')
+            self.gui.update_gui()
+            self.collision_label.config(
+                text=f'This orientation has {self.gui.point_objects[self.gui.plotIdx].collision_count} collisions')
 
-        # Remove default axes
-        ax.set_axis_off()
+            self.button_calculate_bends.config(state="disabled")
 
-        if empty_bool:
-            ax.set_xlim(-1, 1)
-            ax.set_ylim(-1, 1)
-            ax.set_zlim(-1, 1)
-            ax.set_box_aspect([2, 2, 2])
-            axis_length = 2
-        else:
-            # Set specific axis limits (calculate min and max values)
-            x_min = min(point_object.X)
-            x_max = max(point_object.X)
-            y_min = min(point_object.Y)
-            y_max = max(point_object.Y)
-            z_min = min(point_object.Z)
-            z_max = max(point_object.Z)
+        self.updateBendTable()
+        self.updateCodeBox()
+        self.codeLabel.config(text="G-Code")
 
-            # Set axis limits
-            ax.set_xlim(x_min, x_max)
-            ax.set_ylim(y_min, y_max)
-            ax.set_zlim(z_min, z_max)
-            # Disable automatic scaling and set equal aspect ratio for all dimensions
-            ax.set_box_aspect([abs(x_max - x_min), abs(y_max - y_min), abs(z_max - z_min)])
+        self.file_menu.entryconfig(1, state="normal")
 
-            axis_length = max(point_object.Y)
-
-        ax.plot([0, axis_length], [0, 0], [0, 0], color='red', linewidth=2, label='X-Axis')
-        ax.plot([0, 0], [0, axis_length], [0, 0], color='green', linewidth=2, label='Y-Axis')
-        ax.plot([0, 0], [0, 0], [0, axis_length], color='blue', linewidth=2, label='Z-Axis')
-
-        # Set labels and title
-        ax.set_xlabel('X Label')
-        ax.set_ylabel('Y Label')
-        ax.set_zlabel('Z Label')
-        ax.set_title(title)
-
-        ax.view_init(elev=30, azim=45)  # isometric view
-
-        if empty_bool:
-            self.canvas.draw()
-            return
-
-        # Plot points
-        ax.scatter(point_object.X, point_object.Y, point_object.Z, c='b', marker='o', label='Points')
-
-        # Draw lines between points
-        for i in range(0, len(point_object.X) - 1):
-            ax.plot([point_object.X[i], point_object.X[i + 1]],
-                    [point_object.Y[i], point_object.Y[i + 1]],
-                    [point_object.Z[i], point_object.Z[i + 1]], c='black')
-
-        # Redraw the canvas
-        self.canvas.draw()
-
-    def calculate_bends(self):
-        for points in self.point_objects:
-            points.find_bends()
-
-    def incrementIdx(self):
-        if self.plotIdx >= 3:
-            self.plotIdx = 0
-        else:
-            self.plotIdx += 1
+        calculate_bends_popup.destroy()
 
     def next(self):
-        self.update_gui()
+        self.gui.incrementIdx()
+        self.updateCodeBox()
+        self.gui.next()
+        self.collision_label.config(
+            text=f'This orientation has {self.gui.point_objects[self.gui.plotIdx].collision_count} collisions')
 
-    def update_gui(self):
-        # Update GUI elements here
-        print("Coordinates Converted")
+        self.updateBendTable()
 
-        self.plot3d(self.point_objects[self.plotIdx], f'PointObject {self.plotIdx + 1}', False)
-        print(f"PointObject {self.plotIdx + 1} coordinates:")
-        self.point_objects[self.plotIdx].print_contents()
-        print()  # Add an empty line for better readability between PointObjects
+    def updateBendTable(self):
+        self.bend_table.delete(*self.bend_table.get_children())
+        # Insert LRA data into bend_table
+        lra_data = self.gui.point_objects[self.gui.plotIdx].get_lra_data()
+        for values in lra_data:
+            self.bend_table.insert("", "end", values=values)
+
+    def updateCodeBox(self):
+        self.codebox.delete(0, END)
+        pointObject = self.gui.point_objects[self.gui.plotIdx]
+        gCode = BenderGCode(pointObject)
+        self.gCodeString = gCode.generate_gcode()
+
+        for elem in self.gCodeString:
+            self.codebox.insert(END, elem)
+
+
+if __name__ == "__main__":
+    window = Tk()
+    window.title('Wire Bender SW')
+    window.geometry("1500x900")
+    window.config(background="white")
+    window.state('zoomed')
+
+    # Initialize the GUIManager class
+    gui_manager = GUI(window)
+
+    window.mainloop()

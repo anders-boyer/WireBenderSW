@@ -2,7 +2,7 @@ import math
 import numpy as np
 
 
-class PointObject:
+class pointObject:
     def __init__(self, I, J, K):
         self.X, self.Y, self.Z = I, J, K
         self.L, self.R, self.A = [], [], []
@@ -16,10 +16,15 @@ class PointObject:
             self.Y[i] -= y0
             self.Z[i] -= z0
 
-    def reverse_order(self):
+    def reverse_order_coord(self):
         self.X = self.X[::-1]
         self.Y = self.Y[::-1]
         self.Z = self.Z[::-1]
+
+    def reverse_order_bends(self):
+        self.L = self.L[::-1]
+        self.R = self.R[::-1]
+        self.A = self.A[::-1]
 
     def find_rz2(self, index):
         return math.atan2(self.X[index], self.Y[index])  # reference angle from Y
@@ -94,15 +99,14 @@ class PointObject:
 
         for i in range(0, len(self.X)):
             if i >= len(self.X) - 1:  # last point
-                for l, r, a in zip(self.L, self.R, self.A):
-                    print(f"{l:.3f} {r:.3f} {a:.3f}")
-                print()
-                print()
-
+                # for l, r, a in zip(self.L, self.R, self.A):
+                #     print(f"{l:.3f} {r:.3f} {a:.3f}")
+                # print()
+                # print()
+                self.R.append(0)
                 self.X, self.Y, self.Z = Xcopy, Ycopy, Zcopy
             elif i <= 0:  # first point
                 self.L.append(self.calculate_distance(i, i+1))
-                self.R.append(0)
                 self.A.append(0)
             else:
                 self.collision_detection(i)
@@ -123,6 +127,7 @@ class PointObject:
                 matrix = self.rotation_matrix(self.find_rz(i + 1), 'z')
                 self.rotate(matrix)
                 self.collision_detection(i+1)
+        self.reverse_order_bends()
 
     def collision_detection(self, start_index):
 
