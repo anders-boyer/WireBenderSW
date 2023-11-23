@@ -1,6 +1,3 @@
-#from point_object import pointObject
-
-
 class benderGCode:
     # References:
     # https://howtomechatronics.com/tutorials/g-code-explained-list-of-most-important-g-code-commands/
@@ -39,7 +36,7 @@ class benderGCode:
 
         gCode = []
         gCode.append("%")
-        gCode.append("G1 Z15")
+        gCode.append("G1 Z30")
 
         benderPosition = 1
 
@@ -63,33 +60,27 @@ class benderGCode:
                 current_y += self.R[i]
                 gCode.append(f"G1 Y{round(current_y, 2)}")
 
-            if (i == 0) & (self.A[i] < - .02):
-                gCode.append("M208 A0 S1")
-                gCode.append("G1 Z-15")
-                gCode.append("M208 A0 S0")
-                benderPosition = -1
+
             # previous bend was negative, need to duck and move to positive position
-            elif (i > 0) & ((self.A[i] > .02) & (benderPosition == 1)):
-                gCode.append("M208 A0 S1")
-                gCode.append("G1 Z15")
-                gCode.append("M208 A0 S0")
+            if (i > 0) & ((self.A[i] > .02) & (benderPosition == 1)):
+                gCode.append("M106 P0 S1.0")
+                gCode.append("G1 Z30")
+                gCode.append("M106 P0 S0")
                 benderPosition = -1
             elif (i > 0) & ((self.A[i] < -.02) & (benderPosition == -1)):
-                gCode.append("M208 A0 S1")
-                gCode.append("G1 Z-15")
-                gCode.append("M208 A0 S0")
+                gCode.append("M106 P0 S1.0")
+                gCode.append("G1 Z-30")
+                gCode.append("M106 P0 S0")
                 benderPosition = 1
 
             # Check A value threshold
             if abs(self.A[i]) > 0.02:  # Adjust the threshold as needed
-                # Add G1 command for Z movement
                 gCode.append(f"G1 Z{round(self.A[i], 2)}")
-
                 if self.A[i] < 0:
-                    gCode.append("G1 Z15")
+                    gCode.append("G1 Z30")
                     benderPosition = 1
                 elif self.A[i] > 0:
-                    gCode.append("G1 Z-15")
+                    gCode.append("G1 Z-30")
                     benderPosition = -1
 
         gCode.append("%")

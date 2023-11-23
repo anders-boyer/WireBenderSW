@@ -22,8 +22,8 @@ class GUI:
         Grid.rowconfigure(root, 2, weight=30)
         Grid.rowconfigure(root, 3, weight=1)
         Grid.rowconfigure(root, 4, weight=30)
-        Grid.columnconfigure(root, 0, weight=80)
-        Grid.columnconfigure(root, 1, weight=80)
+        Grid.columnconfigure(root, 0, weight=1)
+        Grid.columnconfigure(root, 1, weight=100)
         Grid.columnconfigure(root, 2, weight=1)
         Grid.columnconfigure(root, 3, weight=100)
 
@@ -32,7 +32,7 @@ class GUI:
         frame.grid(row=0, column=0, sticky=N + S + E + W)
 
         self.button_calculate_bends = Button(root, text="Calculate Bends", command=self.calculate_bends_popup, state="disabled")
-        self.button_calculate_bends.grid(row=0, column=0, columnspan=2, padx=15, pady=2, sticky="nsew")
+        self.button_calculate_bends.grid(row=0, column=0, columnspan=3, padx=(15, 0), pady=2, sticky="nsew")
 
         self.codeLabel = Label(root, text="Bend Table")
         self.codeLabel.grid(row=1, column=0, padx=0, pady=0, sticky="sew", columnspan=3)
@@ -41,9 +41,9 @@ class GUI:
         self.collision_label.grid(row=0, column=3, padx=0, pady=0, sticky="nsew")
 
         self.bend_table = ttk.Treeview(window, selectmode='browse')
-        self.bend_table.grid(row=2, column=0, padx=15, pady=0, sticky="nsew", columnspan=2)
+        self.bend_table.grid(row=2, column=0, padx=(15, 0), pady=0, sticky="nsew", columnspan=2)
         self.scrollbar1 = Scrollbar(root)
-        self.scrollbar1.grid(row=2, column=2, padx=0, pady=5, sticky="nsew")
+        self.scrollbar1.grid(row=2, column=2, padx=0, pady=0, sticky="nsew")
         self.bend_table.config(yscrollcommand=self.scrollbar1.set)
         # setting scrollbar command parameter
         # to listbox.yview method its yview because
@@ -88,21 +88,36 @@ class GUI:
         self.codeLabel = Label(root, text="Point Cloud")
         self.codeLabel.grid(row=3, column=0, padx=0, pady=0, sticky="sew", columnspan=3)
 
-        self.codebox = Listbox(root)#, width=20, height=40)
-        self.codebox.grid(row=4, column=0, padx=15, pady=5, sticky="nsew", columnspan=2)
-        self.scrollbar2 = Scrollbar(root)
-        self.scrollbar2.grid(row=4, column=2, padx=0, pady=5, sticky="nsew")
-        # Insert elements into the listbox
-        # for values in range(100):
-        #     self.codebox.insert(END, values)
-            # Attaching Listbox to Scrollbar
-        # Since we need to have a vertical
-        # scroll we use yscrollcommand
+        def yview(*args):
+            self.linebox.yview(*args)
+            self.codebox.yview(*args)
+
+        def on_mousewheel(event):
+            # Update both listboxes when using the mouse wheel
+            self.linebox.yview("scroll", -1 * (event.delta // 120), "units")
+            self.codebox.yview("scroll", -1 * (event.delta // 120), "units")
+            return "break"  # Prevent the default scrolling behavior
+
+        self.linebox = Listbox(root, justify="right")  # , width=20, height=40)
+        self.linebox.grid(row=4, column=0, padx=(15, 0), pady=(0, 5), sticky="nsew")
+
+        self.codebox = Listbox(root)  # , width=20, height=40)
+        self.codebox.grid(row=4, column=1, padx=(0, 0), pady=(0, 5), sticky="nsew")
+
+        self.scrollbar2 = Scrollbar(root, command=yview)
+        self.scrollbar2.grid(row=4, column=2, padx=0, pady=(0, 5), sticky="nsew")
+
         self.codebox.config(yscrollcommand=self.scrollbar2.set)
+        self.linebox.config(yscrollcommand=self.scrollbar2.set)
+
+        # Bind the mouse wheel event to the on_mousewheel function
+        self.codebox.bind("<MouseWheel>", on_mousewheel)
+        self.linebox.bind("<MouseWheel>", on_mousewheel)
         # setting scrollbar command parameter
         # to listbox.yview method its yview because
         # we need to have a vertical view
-        self.scrollbar2.config(command=self.codebox.yview)
+        # self.scrollbar2.config(command=self.codebox.yview)
+        # self.scrollbar2.config(command=self.linebox.yview)
 
         # Create the plot area on the right side
         self.figure = Figure(dpi=100)
@@ -175,8 +190,10 @@ class GUI:
         self.codebox.delete(0, END)
         self.gCodeString = []
 
-        for elem in text_array:
-            self.codebox.insert(END, elem)
+        for i in range(0, len(text_array)-1):
+            self.codebox.insert(END, f'   {text_array[i]}')
+            self.linebox.insert(END, f'{i+1}   ')
+
 
         # Close the import popup
         import_popup.destroy()
@@ -208,7 +225,7 @@ class GUI:
         # Dropdown for bend pin selection
         bend_pin_label = Label(calculate_bends_popup, text="Bend Pin Location:")
         bend_pin_label.grid(row=0, column=0, padx=10, pady=5, sticky="w")
-        pin_options = ["6 mm", "10 mm", "14 mm"]
+        pin_options = ["12 mm", "16.5mm", "27.5 mm"]
         selected_pin = StringVar()
         file_combobox = ttk.Combobox(calculate_bends_popup, textvariable=selected_pin, values=pin_options)
         file_combobox.grid(row=0, column=1, padx=10, pady=5, sticky="w")
@@ -294,6 +311,7 @@ class GUI:
 
     def updateCodeBox(self):
         self.codebox.delete(0, END)
+        self.linebox.delete(0, END)
         pointObject = self.gui.point_objects[self.gui.plotIdx]
         gCode = benderGCode(pointObject)
         self.gCodeString = gCode.generate_gcode()

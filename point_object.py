@@ -165,4 +165,4 @@ class pointObject:
     # Add the following method to your PointObject class (in point_object.py)
     def get_lra_data(self):
         # Assuming you have arrays named L, R, and A
-        return [(round(l, 3), round(r, 3), round(a, 3)) for l, r, a in zip(self.L, self.R, self.A)]
+        return [(round(l, 3), round(r, 3), round(a, 3), round(ab, 3), round(ac, 3)) for l, r, a, ab, ac in zip(self.L, self.R, self.A, self.A, self.A)]

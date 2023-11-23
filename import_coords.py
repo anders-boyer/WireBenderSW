@@ -13,6 +13,7 @@ from point_object import pointObject
 import math
 import os
 
+
 class importCoords:
     def __init__(self, figure, canvas):
         # Initialize the Tkinter window
@@ -286,7 +287,7 @@ class importCoords:
             # Disable automatic scaling and set equal aspect ratio for all dimensions
             ax.set_box_aspect([abs(x_max - x_min), abs(y_max - y_min), abs(z_max - z_min)])
 
-            axis_length = max(point_object.Y)
+            axis_length = max(point_object.Y) * 1.3
 
         ax.plot([0, axis_length], [0, 0], [0, 0], color='red', linewidth=2, label='X-Axis')
         ax.plot([0, 0], [0, axis_length], [0, 0], color='green', linewidth=2, label='Y-Axis')
