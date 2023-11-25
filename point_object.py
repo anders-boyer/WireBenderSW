@@ -2,30 +2,29 @@ import math
 import numpy as np
 
 
-class PointObject:
+class pointObject:
     def __init__(self, I, J, K):
-        self.X = I
-        self.Y = J
-        self.Z = K
-
-        self.L=[]
-        self.R=[]
-        self.A=[]
+        self.X, self.Y, self.Z = I, J, K
+        self.L, self.R, self.A = [], [], []
+        self.collision_count = 0
 
     def translate_to_origin(self, index):
-        x0 = self.X[index]
-        y0 = self.Y[index]
-        z0 = self.Z[index]
+        x0, y0, z0 = self.X[index], self.Y[index], self.Z[index]
 
         for i in range(len(self.X)):
             self.X[i] -= x0
             self.Y[i] -= y0
             self.Z[i] -= z0
 
-    def reverse_order(self):
+    def reverse_order_coord(self):
         self.X = self.X[::-1]
         self.Y = self.Y[::-1]
         self.Z = self.Z[::-1]
+
+    def reverse_order_bends(self):
+        self.L = self.L[::-1]
+        self.R = self.R[::-1]
+        self.A = self.A[::-1]
 
     def find_rz2(self, index):
         return math.atan2(self.X[index], self.Y[index])  # reference angle from Y
@@ -96,30 +95,74 @@ class PointObject:
 
     def find_bends(self):
 
-        for i in range(0, len(self.X) - 1):
-            if i >= len(self.X) - 1:
-                self.L.append(0)
+        Xcopy, Ycopy, Zcopy = self.X.copy(), self.Y.copy(), self.Z.copy()
+
+        for i in range(0, len(self.X)):
+            if i >= len(self.X) - 1:  # last point
+                # for l, r, a in zip(self.L, self.R, self.A):
+                #     print(f"{l:.3f} {r:.3f} {a:.3f}")
+                # print()
+                # print()
                 self.R.append(0)
-                self.A.append(0)
-            elif i <= 0:
+                self.X, self.Y, self.Z = Xcopy, Ycopy, Zcopy
+            elif i <= 0:  # first point
                 self.L.append(self.calculate_distance(i, i+1))
-                self.R.append(0)
                 self.A.append(0)
             else:
+                self.collision_detection(i)
+
                 self.translate_to_origin(i)
                 self.L.append(self.calculate_distance(i, i + 1))
+
+                self.collision_detection(i+1)
 
                 self.R.append(math.degrees(self.find_ry(i + 1)))
 
                 matrix = self.rotation_matrix(self.find_ry(i + 1), 'y')
                 self.rotate(matrix)
+                self.collision_detection(i+1)
 
                 self.A.append(math.degrees(self.find_rz(i + 1)))
 
                 matrix = self.rotation_matrix(self.find_rz(i + 1), 'z')
                 self.rotate(matrix)
+                self.collision_detection(i+1)
+        self.reverse_order_bends()
 
-        for l, r, a in zip(self.L, self.R, self.A):
-            print(f"{l:.3f} {r:.3f} {a:.3f}")
-        print()
-        print()
+    def collision_detection(self, start_index):
+
+        # collision zone in mm
+        limits = {
+            'x': [-150, 150],
+            'y': [-1000, -5],
+            'z': [-100, -5]
+        }
+
+        # Check if any point past the start_index lies inside the cube
+        for i in range(start_index, len(self.X)):
+            point = [self.X[i], self.Y[i], self.Z[i]]
+            if self.point_inside_cube(point, limits):
+                self.collision_count += 1
+                return True  # Collision detected
+
+        return False  # No collision
+
+    @staticmethod
+    def point_inside_cube(point, limits):
+        """
+        Check if a point lies inside a cube defined by its x y and z limits
+        """
+        x, y, z = point
+        x_min, x_max = limits['x']
+        y_min, y_max = limits['y']
+        z_min, z_max = limits['z']
+
+        if (x_min < x < x_max) & (y_min < y < y_max) & (z_min < z < z_max):
+            return True  # Point lies inside the cube
+
+        return False  # Point does not lie inside the cube
+
+    # Add the following method to your PointObject class (in point_object.py)
+    def get_lra_data(self):
+        # Assuming you have arrays named L, R, and A
+        return [(round(l, 3), round(r, 3), round(a, 3), round(ab, 3), round(ac, 3)) for l, r, a, ab, ac in zip(self.L, self.R, self.A, self.A, self.A)]
