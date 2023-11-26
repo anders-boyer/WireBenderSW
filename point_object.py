@@ -1,11 +1,12 @@
 import math
 import numpy as np
-
+from scipy.optimize import fsolve
 
 class pointObject:
+
     def __init__(self, I, J, K):
         self.X, self.Y, self.Z = I, J, K
-        self.L, self.R, self.A = [], [], []
+        self.L, self.R, self.A, self.SA, self.MA = [], [], [], [], []
         self.collision_count = 0
 
     def translate_to_origin(self, index):
@@ -97,7 +98,7 @@ class pointObject:
 
         Xcopy, Ycopy, Zcopy = self.X.copy(), self.Y.copy(), self.Z.copy()
 
-        for i in range(0, len(self.X)):
+        for i in range(len(self.X)):
             if i >= len(self.X) - 1:  # last point
                 # for l, r, a in zip(self.L, self.R, self.A):
                 #     print(f"{l:.3f} {r:.3f} {a:.3f}")
@@ -162,7 +163,56 @@ class pointObject:
 
         return False  # Point does not lie inside the cube
 
-    # Add the following method to your PointObject class (in point_object.py)
     def get_lra_data(self):
         # Assuming you have arrays named L, R, and A
-        return [(round(l, 3), round(r, 3), round(a, 3), round(ab, 3), round(ac, 3)) for l, r, a, ab, ac in zip(self.L, self.R, self.A, self.A, self.A)]
+        return [(round(l, 3), round(r, 3), round(a, 3), round(sa, 3), round(ma, 3)) for l, r, a, sa, ma in zip(self.L, self.R, self.A, self.SA, self.MA)]
+
+    def springBack(self, material):
+        for i in range(len(self.A)):
+            self.SA.append(self.A[i])
+
+    def angleSolver(self, wireDiameter, pinPos):
+
+        bendPin = 6
+        offset = .8
+        minThreshold = 0.2
+
+        for i in range(len(self.A)):
+
+            # skip if angle is below threshold
+            if abs(self.A[i]) < minThreshold:
+                continue
+
+            angle = abs(self.SA[i]) * math.pi/180
+            print("Springback , desired angle")
+            print(self.SA[i], angle)
+
+            x0 = (2.5 + wireDiameter) * np.sin(angle) + offset
+            y0 = (2.5 + wireDiameter) * np.cos(angle) - (2.5 + wireDiameter / 2)
+
+            a = np.tan(angle) * -1
+            b = -1
+            c = y0 - a * x0
+
+            def func(x):
+                return [np.absolute(a * x[0] + b * x[1] + c) / np.sqrt(a ** 2 + b ** 2) - bendPin / 2,
+                        np.sqrt(x[0] ** 2 + x[1] ** 2) - pinPos]
+
+            # better initial guesses using the circle of the pin path
+            xGuess = pinPos * np.cos(angle - (0.2762 + .81 * angle / np.pi))
+            yGuess = pinPos * -1 * np.sin(angle - (0.2762 + .81 * angle / np.pi))
+            print(" x , y guess")
+            print(xGuess, yGuess)
+
+            root = fsolve(func, [xGuess, yGuess])
+            print("root")
+            print(root)
+            motorangle = math.atan2(root[1], root[0]) * 180 / np.pi
+            print("motor angle", motorangle)
+
+            # Positive bends
+            if self.A[i] > 0:
+                self.MA.append(-1 * motorangle)
+            # Negative bends
+            elif self.A[i] < 0:
+                self.MA.append(motorangle)

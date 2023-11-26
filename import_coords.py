@@ -278,7 +278,7 @@ class importCoords:
             y_min = min(point_object.Y)
             y_max = max(point_object.Y)
             z_min = min(point_object.Z)
-            z_max = max(point_object.Z)
+            z_max = max(point_object.Z)+1
 
             # Set axis limits
             ax.set_xlim(x_min, x_max)
@@ -317,9 +317,11 @@ class importCoords:
         # Redraw the canvas
         self.canvas.draw()
 
-    def calculate_bends(self):
+    def calculate_bends(self, material, diameter, pinPos):
         for points in self.point_objects:
             points.find_bends()
+            points.springBack(material)
+            points.angleSolver(diameter, pinPos)
 
     def incrementIdx(self):
         if self.plotIdx >= 3:

@@ -8,6 +8,8 @@ class benderGCode:
         self.L = point_object.L
         self.R = point_object.R
         self.A = point_object.A
+        self.SA = point_object.SA
+        self.MA = point_object.MA
 
         self.command_dictionary = {
             "set to mm": "G21",
@@ -36,7 +38,6 @@ class benderGCode:
 
         gCode = []
         gCode.append("%")
-        gCode.append("G1 Z30")
 
         benderPosition = 1
 
@@ -62,20 +63,20 @@ class benderGCode:
 
 
             # previous bend was negative, need to duck and move to positive position
-            if (i > 0) & ((self.A[i] > .02) & (benderPosition == 1)):
-                gCode.append("M106 P0 S1.0")
-                gCode.append("G1 Z30")
-                gCode.append("M106 P0 S0")
-                benderPosition = -1
-            elif (i > 0) & ((self.A[i] < -.02) & (benderPosition == -1)):
+            if (self.A[i] > .02) & (benderPosition == 1):
                 gCode.append("M106 P0 S1.0")
                 gCode.append("G1 Z-30")
+                gCode.append("M106 P0 S0")
+                benderPosition = -1
+            elif (self.A[i] < -.02) & (benderPosition == -1):
+                gCode.append("M106 P0 S1.0")
+                gCode.append("G1 Z30")
                 gCode.append("M106 P0 S0")
                 benderPosition = 1
 
             # Check A value threshold
             if abs(self.A[i]) > 0.02:  # Adjust the threshold as needed
-                gCode.append(f"G1 Z{round(self.A[i], 2)}")
+                gCode.append(f"G1 Z{round(self.MA[i], 2)}")
                 if self.A[i] < 0:
                     gCode.append("G1 Z30")
                     benderPosition = 1

@@ -159,13 +159,13 @@ class GUI:
 
         # Checkbutton for straight section filtering
         straight_filter_var = IntVar()
-        straight_filter_var.set(1)
+        straight_filter_var.set(0)
         straight_filter_checkbox = Checkbutton(import_popup, text="Straight Section Filtering?", variable=straight_filter_var)
         straight_filter_checkbox.grid(row=1, column=0, padx=10, pady=5, sticky="w")
 
         # Checkbutton for segment reordering
         reorder_var = IntVar()
-        reorder_var.set(1)
+        reorder_var.set(0)
         reorder_checkbox = Checkbutton(import_popup, text="Segment Reordering (did you use the provided SolidWorks macro?)", variable=reorder_var)
         reorder_checkbox.grid(row=2, column=0, columnspan=2, padx=10, pady=5, sticky="w")
 
@@ -225,7 +225,7 @@ class GUI:
         # Dropdown for bend pin selection
         bend_pin_label = Label(calculate_bends_popup, text="Bend Pin Location:")
         bend_pin_label.grid(row=0, column=0, padx=10, pady=5, sticky="w")
-        pin_options = ["12 mm", "16.5mm", "27.5 mm"]
+        pin_options = ["12 mm", "16.5 mm", "27.5 mm"]
         selected_pin = StringVar()
         file_combobox = ttk.Combobox(calculate_bends_popup, textvariable=selected_pin, values=pin_options)
         file_combobox.grid(row=0, column=1, padx=10, pady=5, sticky="w")
@@ -243,7 +243,7 @@ class GUI:
         # Dropdown for diameter selection
         diameter_label = Label(calculate_bends_popup, text="Wire Diameter")
         diameter_label.grid(row=2, column=0, padx=10, pady=5, sticky="w")
-        diameter_options = ["0.5 mm", "0.75 mm", "1 mm", "1.5 mm", "2 mm"]
+        diameter_options = ["0.5 mm", "0.75 mm", "1 mm", "1.5 mm", "2 mm", "3 mm"]
         diameter_option = StringVar()
         file_combobox = ttk.Combobox(calculate_bends_popup, textvariable=diameter_option, values=diameter_options)
         file_combobox.grid(row=2, column=1, padx=10, pady=5, sticky="w")
@@ -259,11 +259,16 @@ class GUI:
         next_button = Button(calculate_bends_popup, text="Next", command=lambda: self.calc_bends_next(calculate_bends_popup, selected_pin.get(), material_option.get(), diameter_option.get(), orientation_var.get()))
         next_button.grid(row=4, column=0, columnspan=2, pady=10)
 
-    def calc_bends_next(self, calculate_bends_popup, pin, material, diameter, orientation):
+    def calc_bends_next(self, calculate_bends_popup, pinPos, material, diameter, orientation):
+
+        material = 1  # needs to be implemented
+
+        diameter = float(diameter.split("mm")[0].strip())
+        pinPos = float(pinPos.split("mm")[0].strip())
 
         self.gui.convert_coords()
         self.button_calculate_bends.config(text="Next Plot", command=self.next)
-        self.gui.calculate_bends()
+        self.gui.calculate_bends(material, diameter, pinPos)
         self.collision_label.config(
             text=f'This orientation has {self.gui.point_objects[self.gui.plotIdx].collision_count} collisions')
 
