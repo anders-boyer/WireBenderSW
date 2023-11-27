@@ -36,9 +36,6 @@ class pointObject:
     def find_ry2(self, index):
         return math.atan2(self.Z[index], self.X[index])  # reference angle from X
 
-    def find_rz(self, index):
-        return math.atan(self.X[index]/self.Y[index])  # reference angle from Y
-
     def find_ry(self, index):
         return math.atan(self.Z[index]/self.X[index])  # reference angle from X
 
@@ -104,7 +101,9 @@ class pointObject:
                 #     print(f"{l:.3f} {r:.3f} {a:.3f}")
                 # print()
                 # print()
+
                 self.R.append(0)
+
                 self.X, self.Y, self.Z = Xcopy, Ycopy, Zcopy
             elif i <= 0:  # first point
                 self.L.append(self.calculate_distance(i, i+1))
@@ -123,9 +122,9 @@ class pointObject:
                 self.rotate(matrix)
                 self.collision_detection(i+1)
 
-                self.A.append(math.degrees(self.find_rz(i + 1)))
+                self.A.append(math.degrees(self.find_rz2(i + 1)))
 
-                matrix = self.rotation_matrix(self.find_rz(i + 1), 'z')
+                matrix = self.rotation_matrix(self.find_rz2(i + 1), 'z')
                 self.rotate(matrix)
                 self.collision_detection(i+1)
         self.reverse_order_bends()
@@ -175,17 +174,19 @@ class pointObject:
 
         bendPin = 6
         offset = .8
-        minThreshold = 0.2
+        minThreshold = 0.05
 
         for i in range(len(self.A)):
 
             # skip if angle is below threshold
             if abs(self.A[i]) < minThreshold:
+                self.MA.append(0)
                 continue
 
+
             angle = abs(self.SA[i]) * math.pi/180
-            print("Springback , desired angle")
-            print(self.SA[i], angle)
+            # print("Springback , desired angle")
+            # print(self.SA[i], angle)
 
             x0 = (2.5 + wireDiameter) * np.sin(angle) + offset
             y0 = (2.5 + wireDiameter) * np.cos(angle) - (2.5 + wireDiameter / 2)
@@ -201,14 +202,14 @@ class pointObject:
             # better initial guesses using the circle of the pin path
             xGuess = pinPos * np.cos(angle - (0.2762 + .81 * angle / np.pi))
             yGuess = pinPos * -1 * np.sin(angle - (0.2762 + .81 * angle / np.pi))
-            print(" x , y guess")
-            print(xGuess, yGuess)
+            # print(" x , y guess")
+            # print(xGuess, yGuess)
 
             root = fsolve(func, [xGuess, yGuess])
-            print("root")
-            print(root)
+            # print("root")
+            # print(root)
             motorangle = math.atan2(root[1], root[0]) * 180 / np.pi
-            print("motor angle", motorangle)
+            # print("motor angle", motorangle)
 
             # Positive bends
             if self.A[i] > 0:

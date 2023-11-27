@@ -1,11 +1,3 @@
-# create a virtual environment for your interpreter and install these packages:
-# use python 3.9
-# pip install -r requirements.txt
-# or
-# pip install mayavi
-# pip install PyQt6
-# pip install PySide2
-
 from tkinter import filedialog
 import copy
 
@@ -108,7 +100,6 @@ class importCoords:
         self.figure.clear()
         self.convertedBool = False
 
-
     def browse_files(self, reorder, filter_straight):
         # Open a file explorer dialog to select a file
         filename = filedialog.askopenfilename(initialdir="/", title="Select a File",
@@ -158,10 +149,10 @@ class importCoords:
         i_filtered.append(self.i[start_idx])
         j_filtered.append(self.j[start_idx])
         k_filtered.append(self.k[start_idx])
-        while start_idx < len(self.i) - 3:
+        while start_idx < len(self.i) - 2:
 
             # Find the end index of the current straight segment
-            while end_idx <= len(self.i) - 2 and self.is_straight_segment(start_idx, end_idx):
+            while end_idx < len(self.i) - 1 and self.is_straight_segment(start_idx, end_idx):
                 end_idx += 1
             # Add start and end points of the straight segment to filtered lists
 
@@ -172,6 +163,10 @@ class importCoords:
             # Move start index to the next potential straight segment
             start_idx = end_idx
             end_idx = end_idx + 1
+
+        i_filtered.append(self.i[end_idx])
+        j_filtered.append(self.j[end_idx])
+        k_filtered.append(self.k[end_idx])
 
         # Update self.i, self.j, and self.k with filtered values
         self.clear_file()
@@ -278,7 +273,7 @@ class importCoords:
             y_min = min(point_object.Y)
             y_max = max(point_object.Y)
             z_min = min(point_object.Z)
-            z_max = max(point_object.Z)+1
+            z_max = max(point_object.Z) + .01
 
             # Set axis limits
             ax.set_xlim(x_min, x_max)
@@ -306,7 +301,7 @@ class importCoords:
             return
 
         # Plot points
-        ax.scatter(point_object.X, point_object.Y, point_object.Z, c='b', marker='o', label='Points')
+        #ax.scatter(point_object.X, point_object.Y, point_object.Z, c='b', marker='o', label='Points')
 
         # Draw lines between points
         for i in range(0, len(point_object.X) - 1):
