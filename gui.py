@@ -267,7 +267,7 @@ class GUI:
         diameter = float(diameter.split("mm")[0].strip())
         pinPos = float(pinPos.split("mm")[0].strip())
 
-        self.gui.convert_coords()
+        self.gui.convert_coords(diameter, pinPos)
         self.button_calculate_bends.config(text="Next Plot", command=self.next)
         self.gui.calculate_bends(material, diameter, pinPos)
         self.collision_label.config(

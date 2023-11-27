@@ -35,7 +35,11 @@ class pointObject:
         return -1 * math.atan2(self.Z[index], self.Y[index])  # reference angle from Y
 
     def find_ry2(self, index):
-        return math.atan2(self.Z[index], self.X[index])  # reference angle from X
+        if index < len(self.Z):
+            return math.atan2(self.Z[index], self.X[index])  # reference angle from X
+        else:
+            print("Array size too small for conversion after minimum bend checking")
+            return 0
 
     def find_ry(self, index):
         return math.atan(self.Z[index]/self.X[index])  # reference angle from X
@@ -134,7 +138,7 @@ class pointObject:
                 arcLengthPrev = .5 * abs(self.find_rz2(i + 1)) * (bendDieRadius + diameter / 2)  # 1/2 arc length of next bend in mm
                 arcLengthNext = .5 * abs(math.radians(self.A[-1])) * (bendDieRadius + diameter / 2)  # 1/2 arc length of next bend in mm
 
-                if i < len(self.X) - 2:
+                if i < len(self.X) - 2: #only add L if this is not the last bend
                     self.L.append(self.calculate_distance(i, i + 1)-arcLengthPrev+arcLengthNext)
 
                 self.A.append(math.degrees(self.find_rz2(i + 1)))
@@ -143,10 +147,12 @@ class pointObject:
                 self.rotate(matrix)
                 self.collision_detection(i+1)
 
-        # for the last point, extrusion length will be equal to L - 1/2 the arc length of next bend + 2.5mm (bend die radius)
-        arcLength = .5 * abs(math.radians(self.A[1])) * (bendDieRadius + diameter / 2)  # 1/2 arc length of next bend in mm
-        # bend die radius subtracted here because we assume the user cuts the part off flush with the bend die
-        self.L[0] = self.calculate_distance(0, 1) - arcLength + bendDieRadius
+
+        if len(self.A) > 1:
+            # for the last point, extrusion length will be equal to L - 1/2 the arc length of next bend + 2.5mm (bend die radius)
+            arcLength = .5 * abs(math.radians(self.A[1])) * (bendDieRadius + diameter / 2)  # 1/2 arc length of next bend in mm
+            # bend die radius subtracted here because we assume the user cuts the part off flush with the bend die
+            self.L[0] = self.calculate_distance(0, 1) - arcLength + bendDieRadius
 
         self.reverse_order_bends()
 
@@ -238,58 +244,58 @@ class pointObject:
             elif self.A[i] < 0:
                 self.MA.append(motorangle)
 
-    def filterCloseVertices(self, diameter, pinPos):
-        # self.Lcopy, self.Rcopy, self.SAcopy = self.L.copy(), self.R.copy(), self.SA.copy()
-        i = 0
-
-        while i < len(self.A)-1:
-            if self.L[i] < self.minBendDist(diameter, pinPos, self.SA[i]):
-                self.L[i] += self.L[i + 1]
-                self.R[i] += self.R[i + 1]
-                self.A[i] += self.A[i + 1]
-                self.SA[i] += self.SA[i+1] # should probably add something here that recalculates springback based on new desired angle
-                del self.L[i + 1]
-                del self.R[i + 1]
-                del self.A[i + 1]
-                del self.SA[i + 1]
-                self.deleted_vertices += 1
-            else:
-                i += 1
+    # def filterCloseVertices(self, diameter, pinPos):
+    #     # self.Lcopy, self.Rcopy, self.SAcopy = self.L.copy(), self.R.copy(), self.SA.copy()
+    #     i = 0
+    #
+    #     while i < len(self.A)-1:
+    #         if self.L[i] < self.minBendDist(diameter, pinPos, self.SA[i]):
+    #             self.L[i] += self.L[i + 1]
+    #             self.R[i] += self.R[i + 1]
+    #             self.A[i] += self.A[i + 1]
+    #             self.SA[i] += self.SA[i+1] # should probably add something here that recalculates springback based on new desired angle
+    #             del self.L[i + 1]
+    #             del self.R[i + 1]
+    #             del self.A[i + 1]
+    #             del self.SA[i + 1]
+    #             self.deleted_vertices += 1
+    #         else:
+    #             i += 1
 
         # self.L, self.R, self.A, self.SA, self.MA = [], [], [], [], []
 
-
-    def minBendDist(self, diameter, pinPos, angle):
-
-        bendPin = 6
-        offset = .8
-
-        bendDieRadius = 2.5
-
-        arcLength = abs(math.radians(angle)) * (bendDieRadius + diameter / 2)
-
-        angle = abs(math.radians(angle))
-        # print("Springback , desired angle")
-        # print(self.SA[i], angle)
-
-        x0 = (2.5 + diameter) * np.sin(angle) + offset
-        y0 = (2.5 + diameter) * np.cos(angle) - (2.5 + diameter / 2)
-
-        a = np.tan(angle) * -1
-        b = -1
-        c = y0 - a * x0
-
-        def func(x):
-            return [np.absolute(a * x[0] + b * x[1] + c) / np.sqrt(a ** 2 + b ** 2) - bendPin / 2,
-                    np.sqrt(x[0] ** 2 + x[1] ** 2) - pinPos]
-
-        # better initial guesses using the circle of the pin path
-        xGuess = pinPos * np.cos(angle - (0.2762 + .81 * angle / np.pi))
-        yGuess = pinPos * -1 * np.sin(angle - (0.2762 + .81 * angle / np.pi))
-
-        root = fsolve(func, [xGuess, yGuess])
-
-        return math.dist(root, [x0, y0]) + arcLength
+    # @staticmethod
+    # def minBendDist(diameter, pinPos, angle):
+    #
+    #     bendPin = 6
+    #     offset = .8
+    #
+    #     bendDieRadius = 2.5
+    #
+    #     arcLength = abs(math.radians(angle)) * (bendDieRadius + diameter / 2)
+    #
+    #     angle = abs(math.radians(angle))
+    #     # print("Springback , desired angle")
+    #     # print(self.SA[i], angle)
+    #
+    #     x0 = (2.5 + diameter) * np.sin(angle) + offset
+    #     y0 = (2.5 + diameter) * np.cos(angle) - (2.5 + diameter / 2)
+    #
+    #     a = np.tan(angle) * -1
+    #     b = -1
+    #     c = y0 - a * x0
+    #
+    #     def func(x):
+    #         return [np.absolute(a * x[0] + b * x[1] + c) / np.sqrt(a ** 2 + b ** 2) - bendPin / 2,
+    #                 np.sqrt(x[0] ** 2 + x[1] ** 2) - pinPos]
+    #
+    #     # better initial guesses using the circle of the pin path
+    #     xGuess = pinPos * np.cos(angle - (0.2762 + .81 * angle / np.pi))
+    #     yGuess = pinPos * -1 * np.sin(angle - (0.2762 + .81 * angle / np.pi))
+    #
+    #     root = fsolve(func, [xGuess, yGuess])
+    #
+    #     return math.dist(root, [x0, y0]) + arcLength
 
 
 

@@ -55,34 +55,34 @@ class benderGCode:
                 # Add G1 command for X movement
                 gCode.append(f"G1 X{round(current_x, 2)}")
 
-            # Check R value threshold
-            if abs(self.R[i]) > 0.01:  # Adjust the threshold as needed
-                # Add G1 command for Y movement
-                current_y += self.R[i]
-                gCode.append(f"G1 Y{round(current_y, 2)}")
+            if (len(self.R) > 0) & (len(self.A) > 0):
+                # Check R value threshold
+                if abs(self.R[i]) > 0.01:  # Adjust the threshold as needed
+                    # Add G1 command for Y movement
+                    current_y += self.R[i]
+                    gCode.append(f"G1 Y{round(current_y, 2)}")
 
-
-            # previous bend was negative, need to duck and move to positive position
-            if (self.A[i] > .02) & (benderPosition == 1):
-                gCode.append("M106 P0 S1.0")
-                gCode.append("G1 Z-30")
-                gCode.append("M106 P0 S0")
-                benderPosition = -1
-            elif (self.A[i] < -.02) & (benderPosition == -1):
-                gCode.append("M106 P0 S1.0")
-                gCode.append("G1 Z30")
-                gCode.append("M106 P0 S0")
-                benderPosition = 1
-
-            # Check A value threshold
-            if abs(self.A[i]) > 0.02:  # Adjust the threshold as needed
-                gCode.append(f"G1 Z{round(self.MA[i], 2)}")
-                if self.A[i] < 0:
-                    gCode.append("G1 Z30")
-                    benderPosition = 1
-                elif self.A[i] > 0:
+                # previous bend was negative, need to duck and move to positive position
+                if (self.A[i] > .02) & (benderPosition == 1):
+                    gCode.append("M106 P0 S1.0")
                     gCode.append("G1 Z-30")
+                    gCode.append("M106 P0 S0")
                     benderPosition = -1
+                elif (self.A[i] < -.02) & (benderPosition == -1):
+                    gCode.append("M106 P0 S1.0")
+                    gCode.append("G1 Z30")
+                    gCode.append("M106 P0 S0")
+                    benderPosition = 1
+
+                # Check A value threshold
+                if abs(self.A[i]) > 0.02:  # Adjust the threshold as needed
+                    gCode.append(f"G1 Z{round(self.MA[i], 2)}")
+                    if self.A[i] < 0:
+                        gCode.append("G1 Z30")
+                        benderPosition = 1
+                    elif self.A[i] > 0:
+                        gCode.append("G1 Z-30")
+                        benderPosition = -1
 
         gCode.append("%")
         return gCode

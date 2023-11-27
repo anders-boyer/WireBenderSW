@@ -1,6 +1,9 @@
 from tkinter import filedialog
 import copy
 
+import numpy as np
+from scipy.optimize import fsolve
+
 from point_object import pointObject
 import math
 import os
@@ -21,9 +24,9 @@ class importCoords:
 
     def calculate_distance(self, idx1, idx2):
         # Calculate Euclidean distance between points at idx1 and idx2
-        distance = math.sqrt((self.i[idx2] - self.i[idx1])**2 +
-                             (self.j[idx2] - self.j[idx1])**2 +
-                             (self.k[idx2] - self.k[idx1])**2)
+        distance = math.sqrt((self.i[idx2] - self.i[idx1]) ** 2 +
+                             (self.j[idx2] - self.j[idx1]) ** 2 +
+                             (self.k[idx2] - self.k[idx1]) ** 2)
         return distance
 
     def segment_points(self):
@@ -85,13 +88,16 @@ class importCoords:
             original_distance = self.calculate_distance(start_idx - 1, start_idx)
             reversed_distance = self.calculate_distance(start_idx - 1, end_idx)
         else:
-            original_distance = (self.calculate_distance(start_idx, start_idx - 1) + self.calculate_distance(end_idx, end_idx + 1))
-            reversed_distance = self.calculate_distance(start_idx, end_idx) + self.calculate_distance(start_idx, end_idx + 1)
+            original_distance = (self.calculate_distance(start_idx, start_idx - 1) + self.calculate_distance(end_idx,
+                                                                                                             end_idx + 1))
+            reversed_distance = self.calculate_distance(start_idx, end_idx) + self.calculate_distance(start_idx,
+                                                                                                      end_idx + 1)
         return reversed_distance < original_distance
 
     def reverse_segment(self, start_idx, end_idx):
         # Reverse the order of points in the segment defined by start_idx and end_idx
-        return self.i[start_idx:end_idx + 1][::-1], self.j[start_idx:end_idx + 1][::-1], self.k[start_idx:end_idx + 1][::-1]
+        return self.i[start_idx:end_idx + 1][::-1], self.j[start_idx:end_idx + 1][::-1], self.k[start_idx:end_idx + 1][
+                                                                                         ::-1]
 
     def clear_file(self):
         self.point_objects = []
@@ -103,7 +109,7 @@ class importCoords:
     def browse_files(self, reorder, filter_straight):
         # Open a file explorer dialog to select a file
         filename = filedialog.askopenfilename(initialdir="/", title="Select a File",
-                                              filetypes=( ("Text files", "*.txt"), ("All files", "*.*")))
+                                              filetypes=(("Text files", "*.txt"), ("All files", "*.*")))
         try:
             # Read the selected file and parse comma-separated values into i, j, and k arrays
             with open(filename, 'r') as file:
@@ -179,8 +185,10 @@ class importCoords:
 
         # Check if the segment defined by idx and end idx is straight
         # Calculate the angle between the vectors using atan2
-        start_vector = (self.i[start_idx + 1] - self.i[start_idx], self.j[start_idx + 1] - self.j[start_idx], self.k[start_idx + 1] - self.k[start_idx])
-        next_vector = (self.i[end_idx + 1] - self.i[end_idx], self.j[end_idx + 1] - self.j[end_idx], self.k[end_idx + 1] - self.k[end_idx])
+        start_vector = (self.i[start_idx + 1] - self.i[start_idx], self.j[start_idx + 1] - self.j[start_idx],
+                        self.k[start_idx + 1] - self.k[start_idx])
+        next_vector = (self.i[end_idx + 1] - self.i[end_idx], self.j[end_idx + 1] - self.j[end_idx],
+                       self.k[end_idx + 1] - self.k[end_idx])
 
         cross_product = (
             start_vector[1] * next_vector[2] - start_vector[2] * next_vector[1],
@@ -223,18 +231,59 @@ class importCoords:
                 text_array.append(f"{i_val}, {j_val}, {k_val}")
         else:
             pass
-            #print("No data to print.")
+            # print("No data to print.")
         return text_array
 
-    def convert_coords(self):
+    def convert_coords(self, diameter, pinPos):
+
+        bendDieRadius = 2.5
 
         if len(self.point_objects) > 0:
             self.point_objects[2].reverse_order_coord()
             self.point_objects[3].reverse_order_coord()
         else:
-            #print("No PointObject instances to convert.")
+            # print("No PointObject instances to convert.")
             return
 
+        # minimum extrude distance handling
+
+        for points in self.point_objects:
+            i = 1
+            while i < len(points.X) - 1:
+
+                if i < len(points.X) - 2:
+                    angle1 = self.calculateAngle(points, i)
+                    angle2 = self.calculateAngle(points, i + 1)
+                else:
+                    angle1 = 0
+                    angle2 = self.calculateAngle(points, i)
+
+                distanceEuclidian = math.sqrt((points.X[i + 1] - points.X[i]) ** 2 +
+                                              (points.Y[i + 1] - points.Y[i]) ** 2 +
+                                              (points.Z[i + 1] - points.Z[i]) ** 2)
+
+                arcLengthPrev = .5 * abs(angle2) * (
+                        bendDieRadius + diameter / 2)  # 1/2 arc length of next bend in mm
+                arcLengthNext = .5 * abs(angle1) * (
+                        bendDieRadius + diameter / 2)  # 1/2 arc length of next bend in mm
+
+                if i >= len(points.X) - 2:
+                    distance = distanceEuclidian + arcLengthPrev - bendDieRadius
+                else:
+                    distance = distanceEuclidian - arcLengthPrev + arcLengthNext
+
+                if distance < self.minBendDist(diameter, pinPos, angle2):
+                    if i < len(points.X) - 1:
+                        del points.X[i+1]
+                        del points.Y[i+1]
+                        del points.Z[i+1]
+                        points.deleted_vertices += 1
+                    else:
+                        print(f'The end segment of this part needs to be increased in length by {distance - self.minBendDist(diameter, pinPos, angle2)} mm')
+                else:
+                    i += 1
+
+        # rotation of other pointObject instances into coordinate systems
         for points in self.point_objects:
             points.translate_to_origin(0)
 
@@ -260,7 +309,7 @@ class importCoords:
         ax = self.figure.add_subplot(111, projection='3d')
 
         # Remove default axes
-        #ax.set_axis_off()
+        # ax.set_axis_off()
 
         if empty_bool:
             ax.set_xlim(-1, 1)
@@ -318,7 +367,7 @@ class importCoords:
         for points in self.point_objects:
             points.find_bends(diameter)
             points.springBack(material)
-            points.filterCloseVertices(diameter, pinPos)
+#            points.filterCloseVertices(diameter, pinPos)
             points.angleSolver(diameter, pinPos)
 
     def incrementIdx(self):
@@ -338,3 +387,58 @@ class importCoords:
         # print(f"PointObject {self.plotIdx + 1} coordinates:")
         # self.point_objects[self.plotIdx].print_contents()
         # print()  # Add an empty line for better readability between PointObjects
+
+    # calculates the minimum extrusion lenth required to make a bend based off the bender settings and angle
+    @staticmethod
+    def minBendDist(diameter, pinPos, angle):
+
+        bendPin = 6
+        offset = .8
+
+        bendDieRadius = 2.5
+
+        arcLength = abs(angle) * (bendDieRadius + diameter / 2)
+
+        angle = abs(angle)
+        # print("Springback , desired angle")
+        # print(self.SA[i], angle)
+
+        x0 = (2.5 + diameter) * np.sin(angle) + offset
+        y0 = (2.5 + diameter) * np.cos(angle) - (2.5 + diameter / 2)
+
+        a = np.tan(angle) * -1
+        b = -1
+        c = y0 - a * x0
+
+        def func(x):
+            return [np.absolute(a * x[0] + b * x[1] + c) / np.sqrt(a ** 2 + b ** 2) - bendPin / 2,
+                    np.sqrt(x[0] ** 2 + x[1] ** 2) - pinPos]
+
+        # better initial guesses using the circle of the pin path
+        xGuess = pinPos * np.cos(angle - (0.2762 + .81 * angle / np.pi))
+        yGuess = pinPos * -1 * np.sin(angle - (0.2762 + .81 * angle / np.pi))
+
+        root = fsolve(func, [xGuess, yGuess])
+
+        distance = math.dist(root, [x0, y0]) + arcLength
+
+        return distance
+
+    # returns angle between two segments in radians given an intersection index and a pointObject instance
+    @staticmethod
+    def calculateAngle(pointObject, idx):
+
+        # Calculate the angle between the vectors using atan2
+        start_vector = (pointObject.X[idx] - pointObject.X[idx - 1], pointObject.Y[idx] - pointObject.Y[idx - 1],
+                        pointObject.Z[idx] - pointObject.Z[idx - 1])
+        next_vector = (pointObject.X[idx + 1] - pointObject.X[idx], pointObject.Y[idx + 1] - pointObject.Y[idx],
+                       pointObject.Z[idx + 1] - pointObject.Z[idx])
+
+        cross_product = (
+            start_vector[1] * next_vector[2] - start_vector[2] * next_vector[1],
+            start_vector[2] * next_vector[0] - start_vector[0] * next_vector[2],
+            start_vector[0] * next_vector[1] - start_vector[1] * next_vector[0]
+        )
+
+        dot_product = sum(a * b for a, b in zip(start_vector, next_vector))
+        return math.atan2(math.sqrt(sum(c ** 2 for c in cross_product)), dot_product)
