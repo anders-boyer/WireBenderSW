@@ -178,22 +178,23 @@ class GUI:
         # print("File Type:", file_type)
         # print("Straight Filter:", straight_filter)
         # print("Segment Reordering:", reorder_option)
+        try:
+            self.filename = self.gui.browse_files(reorder_option, straight_filter)
+            self.gui.plot3d(self.gui.point_objects[0], self.filename, False)
 
-        self.filename = self.gui.browse_files(reorder_option, straight_filter)
-        self.gui.plot3d(self.gui.point_objects[0], self.filename, False)
+            self.button_calculate_bends.config(text="Calculate Bends", command=self.calculate_bends_popup, state="normal")
 
-        self.button_calculate_bends.config(text="Calculate Bends", command=self.calculate_bends_popup, state="normal")
+            text_array = self.gui.print_csv()
 
-        text_array = self.gui.print_csv()
+            self.bend_table.delete(*self.bend_table.get_children())
+            self.codebox.delete(0, END)
+            self.gCodeString = []
 
-        self.bend_table.delete(*self.bend_table.get_children())
-        self.codebox.delete(0, END)
-        self.gCodeString = []
-
-        for i in range(0, len(text_array)-1):
-            self.codebox.insert(END, f'   {text_array[i]}')
-            self.linebox.insert(END, f'{i+1}   ')
-
+            for i in range(0, len(text_array)-1):
+                self.codebox.insert(END, f'   {text_array[i]}')
+                self.linebox.insert(END, f'{i+1}   ')
+        except:
+            print("Import window closed")
 
         # Close the import popup
         import_popup.destroy()
@@ -270,7 +271,9 @@ class GUI:
         self.button_calculate_bends.config(text="Next Plot", command=self.next)
         self.gui.calculate_bends(material, diameter, pinPos)
         self.collision_label.config(
-            text=f'This orientation has {self.gui.point_objects[self.gui.plotIdx].collision_count} collisions')
+            text=f'This orientation has {self.gui.point_objects[self.gui.plotIdx].collision_count} collisions'
+                 f'and {self.gui.point_objects[self.gui.plotIdx].deleted_vertices} deleted vertices')
+
 
         if orientation == 1:
             min_collisions = 111111111111111
@@ -286,7 +289,8 @@ class GUI:
 
             self.gui.update_gui()
             self.collision_label.config(
-                text=f'This orientation has {self.gui.point_objects[self.gui.plotIdx].collision_count} collisions')
+                text=f'This orientation has {self.gui.point_objects[self.gui.plotIdx].collision_count} collisions'
+                     f'and {self.gui.point_objects[self.gui.plotIdx].deleted_vertices} deleted vertices')
 
             self.button_calculate_bends.config(state="disabled")
 
@@ -303,7 +307,8 @@ class GUI:
         self.updateCodeBox()
         self.gui.next()
         self.collision_label.config(
-            text=f'This orientation has {self.gui.point_objects[self.gui.plotIdx].collision_count} collisions')
+            text=f'This orientation has {self.gui.point_objects[self.gui.plotIdx].collision_count} collisions'
+                 f'and {self.gui.point_objects[self.gui.plotIdx].deleted_vertices} deleted vertices')
 
         self.updateBendTable()
 

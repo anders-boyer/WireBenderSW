@@ -149,6 +149,7 @@ class importCoords:
         i_filtered.append(self.i[start_idx])
         j_filtered.append(self.j[start_idx])
         k_filtered.append(self.k[start_idx])
+
         while start_idx < len(self.i) - 2:
 
             # Find the end index of the current straight segment
@@ -164,9 +165,10 @@ class importCoords:
             start_idx = end_idx
             end_idx = end_idx + 1
 
-        i_filtered.append(self.i[end_idx])
-        j_filtered.append(self.j[end_idx])
-        k_filtered.append(self.k[end_idx])
+        if end_idx < len(self.i):
+            i_filtered.append(self.i[end_idx])
+            j_filtered.append(self.j[end_idx])
+            k_filtered.append(self.k[end_idx])
 
         # Update self.i, self.j, and self.k with filtered values
         self.clear_file()
@@ -258,14 +260,14 @@ class importCoords:
         ax = self.figure.add_subplot(111, projection='3d')
 
         # Remove default axes
-        ax.set_axis_off()
+        #ax.set_axis_off()
 
         if empty_bool:
             ax.set_xlim(-1, 1)
             ax.set_ylim(-1, 1)
             ax.set_zlim(-1, 1)
             ax.set_box_aspect([2, 2, 2])
-            axis_length = 2
+            axis_length = 0.5
         else:
             # Set specific axis limits (calculate min and max values)
             x_min = min(point_object.X)
@@ -282,16 +284,16 @@ class importCoords:
             # Disable automatic scaling and set equal aspect ratio for all dimensions
             ax.set_box_aspect([abs(x_max - x_min), abs(y_max - y_min), abs(z_max - z_min)])
 
-            axis_length = max(point_object.Y) * 1.3
+            axis_length = max(point_object.Y) * 0.4
 
         ax.plot([0, axis_length], [0, 0], [0, 0], color='red', linewidth=2, label='X-Axis')
         ax.plot([0, 0], [0, axis_length], [0, 0], color='green', linewidth=2, label='Y-Axis')
         ax.plot([0, 0], [0, 0], [0, axis_length], color='blue', linewidth=2, label='Z-Axis')
 
         # Set labels and title
-        ax.set_xlabel('X Label')
-        ax.set_ylabel('Y Label')
-        ax.set_zlabel('Z Label')
+        ax.set_xlabel('X (mm)')
+        ax.set_ylabel('Y (mm)')
+        ax.set_zlabel('Z (mm)')
         ax.set_title(title)
 
         ax.view_init(elev=30, azim=45)  # isometric view
@@ -301,7 +303,7 @@ class importCoords:
             return
 
         # Plot points
-        #ax.scatter(point_object.X, point_object.Y, point_object.Z, c='b', marker='o', label='Points')
+        ax.scatter(point_object.X, point_object.Y, point_object.Z, c='b', marker='o', label='Points')
 
         # Draw lines between points
         for i in range(0, len(point_object.X) - 1):
@@ -314,8 +316,9 @@ class importCoords:
 
     def calculate_bends(self, material, diameter, pinPos):
         for points in self.point_objects:
-            points.find_bends()
+            points.find_bends(diameter)
             points.springBack(material)
+            points.filterCloseVertices(diameter, pinPos)
             points.angleSolver(diameter, pinPos)
 
     def incrementIdx(self):
