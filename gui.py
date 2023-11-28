@@ -132,7 +132,7 @@ class GUI:
 
         # Create "File" menu
         self.file_menu = Menu(self.menubar, tearoff=0)
-        self.file_menu.add_command(label="Import", command=self.show_import_popup)
+        self.file_menu.add_command(label="Import", command=self.import_next)
         self.file_menu.add_command(label="Export G-Code", command=self.export_action, state="disabled")
         self.menubar.add_cascade(label="File", menu=self.file_menu)
 
@@ -143,44 +143,44 @@ class GUI:
         tempObj = pointObject(i, j, k)
         self.gui.plot3d(tempObj, "", True)
 
-    def show_import_popup(self):
-        # Create a Toplevel window (popup)
-        import_popup = Toplevel()
-        import_popup.title("Import Options")
+    # def show_import_popup(self):
+    #     # Create a Toplevel window (popup)
+    #     import_popup = Toplevel()
+    #     import_popup.title("Import Options")
+    #
+    #     # Dropdown for file selection
+    #     # file_label = Label(import_popup, text="File Type:")
+    #     # file_label.grid(row=0, column=0, padx=10, pady=5, sticky="w")
+    #
+    #     # file_options = ["TXT", "CSV"]  # Add more options if needed
+    #     # selected_file = StringVar()
+    #     # file_combobox = ttk.Combobox(import_popup, textvariable=selected_file, values=file_options)
+    #     # file_combobox.grid(row=0, column=1, padx=10, pady=5, sticky="w")
+    #     # file_combobox.set(file_options[0])  # Set default selection
+    #
+    #     # Checkbutton for straight section filtering
+    #     straight_filter_var = IntVar()
+    #     straight_filter_var.set(0)
+    #     straight_filter_checkbox = Checkbutton(import_popup, text="Straight Section Filtering?", variable=straight_filter_var)
+    #     straight_filter_checkbox.grid(row=1, column=0, padx=10, pady=5, sticky="w")
+    #
+    #     # Checkbutton for segment reordering
+    #     reorder_var = IntVar()
+    #     reorder_var.set(0)
+    #     reorder_checkbox = Checkbutton(import_popup, text="Segment Reordering (did you use the provided SolidWorks macro?)", variable=reorder_var)
+    #     reorder_checkbox.grid(row=2, column=0, columnspan=2, padx=10, pady=5, sticky="w")
+    #
+    #     # Next button
+    #     next_button = Button(import_popup, text="Next", command=lambda: self.import_next(import_popup, straight_filter_var.get(), reorder_var.get()))
+    #     next_button.grid(row=3, column=0, columnspan=2, pady=10)
 
-        # Dropdown for file selection
-        file_label = Label(import_popup, text="File Type:")
-        file_label.grid(row=0, column=0, padx=10, pady=5, sticky="w")
-
-        file_options = ["TXT", "CSV"]  # Add more options if needed
-        selected_file = StringVar()
-        file_combobox = ttk.Combobox(import_popup, textvariable=selected_file, values=file_options)
-        file_combobox.grid(row=0, column=1, padx=10, pady=5, sticky="w")
-        file_combobox.set(file_options[0])  # Set default selection
-
-        # Checkbutton for straight section filtering
-        straight_filter_var = IntVar()
-        straight_filter_var.set(0)
-        straight_filter_checkbox = Checkbutton(import_popup, text="Straight Section Filtering?", variable=straight_filter_var)
-        straight_filter_checkbox.grid(row=1, column=0, padx=10, pady=5, sticky="w")
-
-        # Checkbutton for segment reordering
-        reorder_var = IntVar()
-        reorder_var.set(0)
-        reorder_checkbox = Checkbutton(import_popup, text="Segment Reordering (did you use the provided SolidWorks macro?)", variable=reorder_var)
-        reorder_checkbox.grid(row=2, column=0, columnspan=2, padx=10, pady=5, sticky="w")
-
-        # Next button
-        next_button = Button(import_popup, text="Next", command=lambda: self.import_next(import_popup, selected_file.get(), straight_filter_var.get(), reorder_var.get()))
-        next_button.grid(row=3, column=0, columnspan=2, pady=10)
-
-    def import_next(self, import_popup, file_type, straight_filter, reorder_option):
+    def import_next(self):
         # Handle the import options and close the popup
         # print("File Type:", file_type)
         # print("Straight Filter:", straight_filter)
         # print("Segment Reordering:", reorder_option)
         try:
-            self.filename = self.gui.browse_files(reorder_option, straight_filter)
+            self.filename = self.gui.browse_files()
             self.gui.plot3d(self.gui.point_objects[0], self.filename, False)
 
             self.button_calculate_bends.config(text="Calculate Bends", command=self.calculate_bends_popup, state="normal")
@@ -198,7 +198,6 @@ class GUI:
             print("Import window closed")
 
         # Close the import popup
-        import_popup.destroy()
 
     def export_action(self):
         # Open a file dialog for saving the G-code file

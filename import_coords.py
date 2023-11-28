@@ -22,82 +22,82 @@ class importCoords:
 
         self.convertedBool = False
 
-    def calculate_distance(self, idx1, idx2):
-        # Calculate Euclidean distance between points at idx1 and idx2
-        distance = math.sqrt((self.i[idx2] - self.i[idx1]) ** 2 +
-                             (self.j[idx2] - self.j[idx1]) ** 2 +
-                             (self.k[idx2] - self.k[idx1]) ** 2)
-        return distance
-
-    def segment_points(self):
-        segment_ends = []  # Initialize as an empty list, no need for the initial (0, 0) tuple
-        threshold_multiplier = 1.05
-
-        for i in range(1, len(self.i)):
-            # Calculate the distance between the current point (i) and the point at (i-1)
-            distance = self.calculate_distance(i, i - 1)
-
-            if i >= 2:
-                # Calculate the threshold based on 1.1 times the distance from point (i-1) and (i-2)
-                threshold = threshold_multiplier * self.calculate_distance(i - 1, i - 2)
-            else:
-                # For the first point, set the threshold to a high value to prevent an out-of-bounds error
-                threshold = float('inf')
-
-            # If the distance between the current point and the previous point is greater than the threshold, consider it a segment end
-            if distance > threshold:
-                # Get the end index of the last segment in segment_ends list
-                last_end_idx = segment_ends[-1][1] if segment_ends else -1
-                # Append the segment indices as a tuple to segment_ends list, starting from the next index after the last segment
-                segment_ends.append((last_end_idx + 1, i - 1))
-
-        # If there are segments, add the last point as a segment end
-        if segment_ends:
-            segment_ends.append((segment_ends[-1][1] + 1, len(self.i) - 1))
-
-        return segment_ends
-
-    def reorder_segments(self, segment_ends):
-        while True:
-            # Make a deep copy of the current state
-            i_copy, j_copy, k_copy = self.i.copy(), self.j.copy(), self.k.copy()
-            reversed_segments = 0  # Variable to track the number of segments reversed in this iteration
-
-            for segment in segment_ends:
-                start_idx, end_idx = segment
-                if self.should_reverse_segment(start_idx, end_idx):
-                    reversed_segment = self.reverse_segment(start_idx, end_idx)
-                    i_copy[start_idx:end_idx + 1] = reversed_segment[0]
-                    j_copy[start_idx:end_idx + 1] = reversed_segment[1]
-                    k_copy[start_idx:end_idx + 1] = reversed_segment[2]
-                    reversed_segments += 1  # Increment the count of reversed segments
-
-            # If no segments were reversed, the arrangement is optimized, break the loop
-            if reversed_segments == 0:
-                break
-
-            # Update the points with the reordered segments
-            self.i, self.j, self.k = i_copy, j_copy, k_copy
-
-    def should_reverse_segment(self, start_idx, end_idx):
-        # Check if reversing the segment would result in shorter distances between points
-        if start_idx <= 1:
-            original_distance = self.calculate_distance(end_idx, end_idx + 1)
-            reversed_distance = self.calculate_distance(start_idx, end_idx + 1)
-        elif end_idx >= len(self.i) - 1:
-            original_distance = self.calculate_distance(start_idx - 1, start_idx)
-            reversed_distance = self.calculate_distance(start_idx - 1, end_idx)
-        else:
-            original_distance = (self.calculate_distance(start_idx, start_idx - 1) + self.calculate_distance(end_idx,
-                                                                                                             end_idx + 1))
-            reversed_distance = self.calculate_distance(start_idx, end_idx) + self.calculate_distance(start_idx,
-                                                                                                      end_idx + 1)
-        return reversed_distance < original_distance
-
-    def reverse_segment(self, start_idx, end_idx):
-        # Reverse the order of points in the segment defined by start_idx and end_idx
-        return self.i[start_idx:end_idx + 1][::-1], self.j[start_idx:end_idx + 1][::-1], self.k[start_idx:end_idx + 1][
-                                                                                         ::-1]
+    # def calculate_distance(self, idx1, idx2):
+    #     # Calculate Euclidean distance between points at idx1 and idx2
+    #     distance = math.sqrt((self.i[idx2] - self.i[idx1]) ** 2 +
+    #                          (self.j[idx2] - self.j[idx1]) ** 2 +
+    #                          (self.k[idx2] - self.k[idx1]) ** 2)
+    #     return distance
+    #
+    # def segment_points(self):
+    #     segment_ends = []  # Initialize as an empty list, no need for the initial (0, 0) tuple
+    #     threshold_multiplier = 1.05
+    #
+    #     for i in range(1, len(self.i)):
+    #         # Calculate the distance between the current point (i) and the point at (i-1)
+    #         distance = self.calculate_distance(i, i - 1)
+    #
+    #         if i >= 2:
+    #             # Calculate the threshold based on 1.1 times the distance from point (i-1) and (i-2)
+    #             threshold = threshold_multiplier * self.calculate_distance(i - 1, i - 2)
+    #         else:
+    #             # For the first point, set the threshold to a high value to prevent an out-of-bounds error
+    #             threshold = float('inf')
+    #
+    #         # If the distance between the current point and the previous point is greater than the threshold, consider it a segment end
+    #         if distance > threshold:
+    #             # Get the end index of the last segment in segment_ends list
+    #             last_end_idx = segment_ends[-1][1] if segment_ends else -1
+    #             # Append the segment indices as a tuple to segment_ends list, starting from the next index after the last segment
+    #             segment_ends.append((last_end_idx + 1, i - 1))
+    #
+    #     # If there are segments, add the last point as a segment end
+    #     if segment_ends:
+    #         segment_ends.append((segment_ends[-1][1] + 1, len(self.i) - 1))
+    #
+    #     return segment_ends
+    #
+    # def reorder_segments(self, segment_ends):
+    #     while True:
+    #         # Make a deep copy of the current state
+    #         i_copy, j_copy, k_copy = self.i.copy(), self.j.copy(), self.k.copy()
+    #         reversed_segments = 0  # Variable to track the number of segments reversed in this iteration
+    #
+    #         for segment in segment_ends:
+    #             start_idx, end_idx = segment
+    #             if self.should_reverse_segment(start_idx, end_idx):
+    #                 reversed_segment = self.reverse_segment(start_idx, end_idx)
+    #                 i_copy[start_idx:end_idx + 1] = reversed_segment[0]
+    #                 j_copy[start_idx:end_idx + 1] = reversed_segment[1]
+    #                 k_copy[start_idx:end_idx + 1] = reversed_segment[2]
+    #                 reversed_segments += 1  # Increment the count of reversed segments
+    #
+    #         # If no segments were reversed, the arrangement is optimized, break the loop
+    #         if reversed_segments == 0:
+    #             break
+    #
+    #         # Update the points with the reordered segments
+    #         self.i, self.j, self.k = i_copy, j_copy, k_copy
+    #
+    # def should_reverse_segment(self, start_idx, end_idx):
+    #     # Check if reversing the segment would result in shorter distances between points
+    #     if start_idx <= 1:
+    #         original_distance = self.calculate_distance(end_idx, end_idx + 1)
+    #         reversed_distance = self.calculate_distance(start_idx, end_idx + 1)
+    #     elif end_idx >= len(self.i) - 1:
+    #         original_distance = self.calculate_distance(start_idx - 1, start_idx)
+    #         reversed_distance = self.calculate_distance(start_idx - 1, end_idx)
+    #     else:
+    #         original_distance = (self.calculate_distance(start_idx, start_idx - 1) + self.calculate_distance(end_idx,
+    #                                                                                                          end_idx + 1))
+    #         reversed_distance = self.calculate_distance(start_idx, end_idx) + self.calculate_distance(start_idx,
+    #                                                                                                   end_idx + 1)
+    #     return reversed_distance < original_distance
+    #
+    # def reverse_segment(self, start_idx, end_idx):
+    #     # Reverse the order of points in the segment defined by start_idx and end_idx
+    #     return self.i[start_idx:end_idx + 1][::-1], self.j[start_idx:end_idx + 1][::-1], self.k[start_idx:end_idx + 1][
+    #                                                                                      ::-1]
 
     def clear_file(self):
         self.point_objects = []
@@ -106,10 +106,10 @@ class importCoords:
         self.figure.clear()
         self.convertedBool = False
 
-    def browse_files(self, reorder, filter_straight):
+    def browse_files(self):
         # Open a file explorer dialog to select a file
         filename = filedialog.askopenfilename(initialdir="/", title="Select a File",
-                                              filetypes=(("Text files", "*.txt"), ("All files", "*.*")))
+                                              filetypes=(("CSV files", "*.csv"), ("All files", "*.*")))
         try:
             # Read the selected file and parse comma-separated values into i, j, and k arrays
             with open(filename, 'r') as file:
@@ -127,13 +127,13 @@ class importCoords:
 
         if len(self.i) > 0:
 
-            if reorder == 1:
-                # Call segment_points to identify segments
-                segment_ends = self.segment_points()
-                # Call reorder_segments with segment_ends to reorder the points within each segment
-                self.reorder_segments(segment_ends)
-            if filter_straight == 1:
-                self.filter_straight_sections()
+            # if reorder == 1:
+            #     # Call segment_points to identify segments
+            #     segment_ends = self.segment_points()
+            #     # Call reorder_segments with segment_ends to reorder the points within each segment
+            #     self.reorder_segments(segment_ends)
+            # if filter_straight == 1:
+            #     self.filter_straight_sections()
 
             point_object = pointObject(self.i, self.j, self.k)
             self.point_objects.append(point_object)
