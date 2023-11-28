@@ -37,10 +37,12 @@ class benderGCode:
         """
 
         gCode = []
+        comment = []
+
         gCode.append("%")
+        comment.append("")
 
         benderPosition = 1
-
 
         # Initialize current X, Y, Z values
         current_x = 0.0
@@ -54,6 +56,7 @@ class benderGCode:
                 current_x += self.L[i]
                 # Add G1 command for X movement
                 gCode.append(f"G1 X{round(current_x, 2)}")
+                comment.append(f';  Extrude wire {round(self.L[i], 2)} mm')
 
             if (len(self.R) > 0) & (len(self.A) > 0):
                 # Check R value threshold
@@ -61,31 +64,42 @@ class benderGCode:
                     # Add G1 command for Y movement
                     current_y += self.R[i]
                     gCode.append(f"G1 Y{round(current_y, 2)}")
+                    comment.append(f';  Rotate wire {round(self.R[i], 2)} degrees')
 
                 # previous bend was negative, need to duck and move to positive position
                 if (self.A[i] > .02) & (benderPosition == 1):
                     gCode.append("M106 P0 S1.0")
+                    comment.append(f';  Ducking pin for positive bend')
                     gCode.append("G1 Z-30")
+                    comment.append(f'')
                     gCode.append("M106 P0 S0")
+                    comment.append(f'')
                     benderPosition = -1
                 elif (self.A[i] < -.02) & (benderPosition == -1):
                     gCode.append("M106 P0 S1.0")
+                    comment.append(f';  Ducking pin for negative bend')
                     gCode.append("G1 Z30")
+                    comment.append(f'')
                     gCode.append("M106 P0 S0")
+                    comment.append(f'')
                     benderPosition = 1
 
                 # Check A value threshold
                 if abs(self.A[i]) > 0.02:  # Adjust the threshold as needed
                     gCode.append(f"G1 Z{round(self.MA[i], 2)}")
+                    comment.append(f';  Setting motor angle to {round(self.MA[i], 2)} degrees for {round(self.A[i], 2)} degree desired bend')
                     if self.A[i] < 0:
                         gCode.append("G1 Z30")
+                        comment.append(f';  Return pin to positive position')
                         benderPosition = 1
                     elif self.A[i] > 0:
                         gCode.append("G1 Z-30")
+                        comment.append(f';  Return pin to negative position')
                         benderPosition = -1
 
         gCode.append("%")
-        return gCode
+        comment.append(0)
+        return [gCode, comment]
 
 
     # def add_gcode_line(self, line):

@@ -8,6 +8,7 @@ from import_coords import importCoords
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from point_object import pointObject
+import math
 
 
 class GUI:
@@ -211,7 +212,7 @@ class GUI:
         if file_path:
             # Save the G-code content to the chosen file
             with open(file_path, 'w') as file:
-                for line in self.gCodeString:
+                for line in self.gCodeString[0]:
                     file.write(line + '\n')
 
             # Inform the user that the file has been saved
@@ -272,7 +273,7 @@ class GUI:
         self.gui.calculate_bends(material, diameter, pinPos)
         self.collision_label.config(
             text=f'This orientation has {self.gui.point_objects[self.gui.plotIdx].collision_count} collisions'
-                 f'and {self.gui.point_objects[self.gui.plotIdx].deleted_vertices} deleted vertices')
+                 f' and {self.gui.point_objects[self.gui.plotIdx].deleted_vertices} deleted vertices')
 
 
         if orientation == 1:
@@ -290,7 +291,7 @@ class GUI:
             self.gui.update_gui()
             self.collision_label.config(
                 text=f'This orientation has {self.gui.point_objects[self.gui.plotIdx].collision_count} collisions'
-                     f'and {self.gui.point_objects[self.gui.plotIdx].deleted_vertices} deleted vertices')
+                     f' and {self.gui.point_objects[self.gui.plotIdx].deleted_vertices} deleted vertices')
 
             self.button_calculate_bends.config(state="disabled")
 
@@ -308,7 +309,7 @@ class GUI:
         self.gui.next()
         self.collision_label.config(
             text=f'This orientation has {self.gui.point_objects[self.gui.plotIdx].collision_count} collisions'
-                 f'and {self.gui.point_objects[self.gui.plotIdx].deleted_vertices} deleted vertices')
+                 f' and {self.gui.point_objects[self.gui.plotIdx].deleted_vertices} deleted vertices')
 
         self.updateBendTable()
 
@@ -326,8 +327,21 @@ class GUI:
         gCode = benderGCode(pointObject)
         self.gCodeString = gCode.generate_gcode()
 
-        for elem in self.gCodeString:
-            self.codebox.insert(END, elem)
+        def tabify(s, tabsize=40):
+            return s.ljust(tabsize-len(s))
+
+            # ln = math.floor(((len(s) / tabsize) + 1) * tabsize)
+            # thing = s.ljust(ln)
+            # return thing
+
+        for i in range(len(self.gCodeString[0])):
+            self.codebox.insert(END, f'  {tabify(self.gCodeString[0][i])}{self.gCodeString[1][i]}')
+            self.linebox.insert(END, f'{i + 1}')
+
+        # for elem in self.gCodeString:
+        #     self.codebox.insert(END, f' {elem}')
+        #     self.linebox.insert(END, f'{i + 1}   ')
+        #     i += 1
 
 
 if __name__ == "__main__":

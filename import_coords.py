@@ -181,7 +181,7 @@ class importCoords:
         self.i, self.j, self.k = i_filtered, j_filtered, k_filtered
 
     def is_straight_segment(self, start_idx, end_idx):
-        angle_threshold_degrees = 0.2
+        angle_threshold_degrees = 1
 
         # Check if the segment defined by idx and end idx is straight
         # Calculate the angle between the vectors using atan2
