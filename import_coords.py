@@ -273,13 +273,14 @@ class importCoords:
                     distance = distanceEuclidian - arcLengthPrev + arcLengthNext
 
                 if distance < self.minBendDist(diameter, pinPos, angle2):
-                    if i < len(points.X) - 1:
+                    if i < len(points.X) - 2:
                         del points.X[i+1]
                         del points.Y[i+1]
                         del points.Z[i+1]
                         points.deleted_vertices += 1
                     else:
-                        print(f'The end segment of this part needs to be increased in length by {distance - self.minBendDist(diameter, pinPos, angle2)} mm')
+                        print(f'The end segment of this part needs to be increased in length by {self.minBendDist(diameter, pinPos, angle2) - distance} mm')
+                        i += 1
                 else:
                     i += 1
 

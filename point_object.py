@@ -195,7 +195,12 @@ class pointObject:
 
     def springBack(self, material):
         for i in range(len(self.A)):
-            self.SA.append(self.A[i])
+            if self.A[i] < -.05:
+                self.SA.append(self.A[i] - 1)
+            elif self.A[i] > .05:
+                self.SA.append(self.A[i] + 1)
+            else:
+                self.SA.append(0)
 
     def angleSolver(self, diameter, pinPos):
 
