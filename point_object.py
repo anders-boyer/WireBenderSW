@@ -202,52 +202,52 @@ class pointObject:
             else:
                 self.SA.append(0)
 
-    def angleSolver(self, diameter, pinPos):
-
-        bendPin = 6
-        offset = .8
-        minThreshold = 0.05
-
-        for i in range(len(self.A)):
-
-            # skip if angle is below threshold
-            if abs(self.A[i]) < minThreshold:
-                self.MA.append(0)
-                continue
-
-            angle = abs(math.radians(self.SA[i]))
-            # print("Springback , desired angle")
-            # print(self.SA[i], angle)
-
-            x0 = (2.5 + diameter) * np.sin(angle) + offset
-            y0 = (2.5 + diameter) * np.cos(angle) - (2.5 + diameter / 2)
-
-            a = np.tan(angle) * -1
-            b = -1
-            c = y0 - a * x0
-
-            def func(x):
-                return [np.absolute(a * x[0] + b * x[1] + c) / np.sqrt(a ** 2 + b ** 2) - bendPin / 2,
-                        np.sqrt(x[0] ** 2 + x[1] ** 2) - pinPos]
-
-            # better initial guesses using the circle of the pin path
-            xGuess = pinPos * np.cos(angle - (0.2762 + .81 * angle / np.pi))
-            yGuess = pinPos * -1 * np.sin(angle - (0.2762 + .81 * angle / np.pi))
-            # print(" x , y guess")
-            # print(xGuess, yGuess)
-
-            root = fsolve(func, [xGuess, yGuess])
-            # print("root")
-            # print(root)
-            motorangle = math.atan2(root[1], root[0]) * 180 / np.pi
-            # print("motor angle", motorangle)
-
-            # Positive bends
-            if self.A[i] > 0:
-                self.MA.append(-1 * motorangle)
-            # Negative bends
-            elif self.A[i] < 0:
-                self.MA.append(motorangle)
+    # def angleSolver(self, diameter, pinPos):
+    #
+    #     bendPin = 6
+    #     offset = .8
+    #     minThreshold = 0.05
+    #
+    #     for i in range(len(self.A)):
+    #
+    #         # skip if angle is below threshold
+    #         if abs(self.A[i]) < minThreshold:
+    #             self.MA.append(0)
+    #             continue
+    #
+    #         angle = abs(math.radians(self.SA[i]))
+    #         # print("Springback , desired angle")
+    #         # print(self.SA[i], angle)
+    #
+    #         x0 = (2.5 + diameter) * np.sin(angle) + offset
+    #         y0 = (2.5 + diameter) * np.cos(angle) - (2.5 + diameter / 2)
+    #
+    #         a = np.tan(angle) * -1
+    #         b = -1
+    #         c = y0 - a * x0
+    #
+    #         def func(x):
+    #             return [np.absolute(a * x[0] + b * x[1] + c) / np.sqrt(a ** 2 + b ** 2) - bendPin / 2,
+    #                     np.sqrt(x[0] ** 2 + x[1] ** 2) - pinPos]
+    #
+    #         # better initial guesses using the circle of the pin path
+    #         xGuess = pinPos * np.cos(angle - (0.2762 + .81 * angle / np.pi))
+    #         yGuess = pinPos * -1 * np.sin(angle - (0.2762 + .81 * angle / np.pi))
+    #         # print(" x , y guess")
+    #         # print(xGuess, yGuess)
+    #
+    #         root = fsolve(func, [xGuess, yGuess])
+    #         # print("root")
+    #         # print(root)
+    #         motorangle = math.atan2(root[1], root[0]) * 180 / np.pi
+    #         # print("motor angle", motorangle)
+    #
+    #         # Positive bends
+    #         if self.A[i] > 0:
+    #             self.MA.append(-1 * motorangle)
+    #         # Negative bends
+    #         elif self.A[i] < 0:
+    #             self.MA.append(motorangle)
 
     # def filterCloseVertices(self, diameter, pinPos):
     #     # self.Lcopy, self.Rcopy, self.SAcopy = self.L.copy(), self.R.copy(), self.SA.copy()

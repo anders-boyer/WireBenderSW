@@ -145,65 +145,65 @@ class importCoords:
             print("No data")
         return os.path.basename(filename)
 
-    def filter_straight_sections(self):
-        i_filtered, j_filtered, k_filtered = [], [], []
-
-        # Initialize start and end indices of straight segments
-        start_idx = 0
-        end_idx = 1
-
-        i_filtered.append(self.i[start_idx])
-        j_filtered.append(self.j[start_idx])
-        k_filtered.append(self.k[start_idx])
-
-        while start_idx < len(self.i) - 2:
-
-            # Find the end index of the current straight segment
-            while end_idx < len(self.i) - 1 and self.is_straight_segment(start_idx, end_idx):
-                end_idx += 1
-            # Add start and end points of the straight segment to filtered lists
-
-            i_filtered.append(self.i[end_idx])
-            j_filtered.append(self.j[end_idx])
-            k_filtered.append(self.k[end_idx])
-
-            # Move start index to the next potential straight segment
-            start_idx = end_idx
-            end_idx = end_idx + 1
-
-        if end_idx < len(self.i):
-            i_filtered.append(self.i[end_idx])
-            j_filtered.append(self.j[end_idx])
-            k_filtered.append(self.k[end_idx])
-
-        # Update self.i, self.j, and self.k with filtered values
-        self.clear_file()
-        self.i, self.j, self.k = i_filtered, j_filtered, k_filtered
-
-    def is_straight_segment(self, start_idx, end_idx):
-        angle_threshold_degrees = 1
-
-        # Check if the segment defined by idx and end idx is straight
-        # Calculate the angle between the vectors using atan2
-        start_vector = (self.i[start_idx + 1] - self.i[start_idx], self.j[start_idx + 1] - self.j[start_idx],
-                        self.k[start_idx + 1] - self.k[start_idx])
-        next_vector = (self.i[end_idx + 1] - self.i[end_idx], self.j[end_idx + 1] - self.j[end_idx],
-                       self.k[end_idx + 1] - self.k[end_idx])
-
-        cross_product = (
-            start_vector[1] * next_vector[2] - start_vector[2] * next_vector[1],
-            start_vector[2] * next_vector[0] - start_vector[0] * next_vector[2],
-            start_vector[0] * next_vector[1] - start_vector[1] * next_vector[0]
-        )
-
-        dot_product = sum(a * b for a, b in zip(start_vector, next_vector))
-        angle_rad = math.atan2(math.sqrt(sum(c ** 2 for c in cross_product)), dot_product)
-
-        # Convert the threshold from degrees to radians for comparison
-        angle_threshold_rad = math.radians(angle_threshold_degrees)
-
-        # Return True if the angle is below the threshold (segment is straight), False otherwise
-        return angle_rad < angle_threshold_rad
+    # def filter_straight_sections(self):
+    #     i_filtered, j_filtered, k_filtered = [], [], []
+    #
+    #     # Initialize start and end indices of straight segments
+    #     start_idx = 0
+    #     end_idx = 1
+    #
+    #     i_filtered.append(self.i[start_idx])
+    #     j_filtered.append(self.j[start_idx])
+    #     k_filtered.append(self.k[start_idx])
+    #
+    #     while start_idx < len(self.i) - 2:
+    #
+    #         # Find the end index of the current straight segment
+    #         while end_idx < len(self.i) - 1 and self.is_straight_segment(start_idx, end_idx):
+    #             end_idx += 1
+    #         # Add start and end points of the straight segment to filtered lists
+    #
+    #         i_filtered.append(self.i[end_idx])
+    #         j_filtered.append(self.j[end_idx])
+    #         k_filtered.append(self.k[end_idx])
+    #
+    #         # Move start index to the next potential straight segment
+    #         start_idx = end_idx
+    #         end_idx = end_idx + 1
+    #
+    #     if end_idx < len(self.i):
+    #         i_filtered.append(self.i[end_idx])
+    #         j_filtered.append(self.j[end_idx])
+    #         k_filtered.append(self.k[end_idx])
+    #
+    #     # Update self.i, self.j, and self.k with filtered values
+    #     self.clear_file()
+    #     self.i, self.j, self.k = i_filtered, j_filtered, k_filtered
+    #
+    # def is_straight_segment(self, start_idx, end_idx):
+    #     angle_threshold_degrees = 1
+    #
+    #     # Check if the segment defined by idx and end idx is straight
+    #     # Calculate the angle between the vectors using atan2
+    #     start_vector = (self.i[start_idx + 1] - self.i[start_idx], self.j[start_idx + 1] - self.j[start_idx],
+    #                     self.k[start_idx + 1] - self.k[start_idx])
+    #     next_vector = (self.i[end_idx + 1] - self.i[end_idx], self.j[end_idx + 1] - self.j[end_idx],
+    #                    self.k[end_idx + 1] - self.k[end_idx])
+    #
+    #     cross_product = (
+    #         start_vector[1] * next_vector[2] - start_vector[2] * next_vector[1],
+    #         start_vector[2] * next_vector[0] - start_vector[0] * next_vector[2],
+    #         start_vector[0] * next_vector[1] - start_vector[1] * next_vector[0]
+    #     )
+    #
+    #     dot_product = sum(a * b for a, b in zip(start_vector, next_vector))
+    #     angle_rad = math.atan2(math.sqrt(sum(c ** 2 for c in cross_product)), dot_product)
+    #
+    #     # Convert the threshold from degrees to radians for comparison
+    #     angle_threshold_rad = math.radians(angle_threshold_degrees)
+    #
+    #     # Return True if the angle is below the threshold (segment is straight), False otherwise
+    #     return angle_rad < angle_threshold_rad
 
     # not used
     def get_coord(self, column_index, element_index):
@@ -364,12 +364,16 @@ class importCoords:
         # Redraw the canvas
         self.canvas.draw()
 
-    def calculate_bends(self, material, diameter, pinPos):
+
+    def calculate_bends(self, material, diameter):
+
         for points in self.point_objects:
             points.find_bends(diameter)
-            points.springBack(material)
+
+
+            # points.springBack(material)
 #            points.filterCloseVertices(diameter, pinPos)
-            points.angleSolver(diameter, pinPos)
+#             points.angleSolver(diameter, pinPos)
 
     def incrementIdx(self):
         if self.plotIdx >= 3:
