@@ -21,6 +21,7 @@ class importCoords:
         self.figure, self.canvas = figure, canvas
 
         self.convertedBool = False
+        self.compensation_coeff = np.zeros(1, 2)
 
     # def calculate_distance(self, idx1, idx2):
     #     # Calculate Euclidean distance between points at idx1 and idx2
@@ -447,3 +448,33 @@ class importCoords:
 
         dot_product = sum(a * b for a, b in zip(start_vector, next_vector))
         return math.atan2(math.sqrt(sum(c ** 2 for c in cross_product)), dot_product)
+
+    def compute_compensation_coefficients(self, filename):
+        # Load csv
+        compensation_data = np.loadtxt(filename,
+                    delimiter=",", dtype=str)
+        compensation_data = compensation_data.astype(float)
+        
+        num_rows, num_cols = compensation_data.shape
+
+        best_fit = np.polyfit(compensation_data[:, 1], compensation_data[:, 0], 1)
+        lowest_average_error = 100
+        for i in range(1, 10):
+            current_fit = np.polyfit(compensation_data[:, 1], compensation_data[:, 0], i)
+            current_average_error = 0
+
+            for j in range(0, num_rows):
+                computed = self.compute_compensation(compensation_data[j, 1], current_fit)
+                current_average_error += np.abs(computed - compensation_data[j, 0])
+            current_average_error /= num_rows
+
+            if current_average_error < lowest_average_error:
+                best_fit = current_fit
+                lowest_average_error = current_average_error
+        self.compensation_coeff = best_fit
+    
+    def compute_compensation(desired_angle, compensation_coeff):
+        command_angle = compensation_coeff[compensation_coeff.size-1]
+        for i in range(0, compensation_coeff.size - 1):
+            command_angle += compensation_coeff[i] * desired_angle
+        return command_angle
