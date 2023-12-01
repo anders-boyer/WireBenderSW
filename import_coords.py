@@ -136,7 +136,7 @@ class importCoords:
             # if filter_straight == 1:
             #     self.filter_straight_sections()
 
-            point_object = pointObject(self.i, self.j, self.k)
+            point_object = pointObject(self.i, self.j, self.k, self.compensation_coeff, self.compute_compensation)
             self.point_objects.append(point_object)
             # Create deep copies of the first PointObject instance
             new_point_objects = [copy.deepcopy(self.point_objects[0]) for _ in range(3)]

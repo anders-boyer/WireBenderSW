@@ -4,11 +4,13 @@ from scipy.optimize import fsolve
 
 class pointObject:
 
-    def __init__(self, I, J, K):
+    def __init__(self, I, J, K, compensation_coeff, compute_compensation_method):
         self.X, self.Y, self.Z = I, J, K
         self.L, self.R, self.A, self.SA, self.MA = [], [], [], [], []
         self.collision_count = 0
         self.deleted_vertices = 0
+        self.compensation_coeff = compensation_coeff
+        self.compute_compensation = compute_compensation_method
 
     def translate_to_origin(self, index):
         x0, y0, z0 = self.X[index], self.Y[index], self.Z[index]
@@ -194,6 +196,7 @@ class pointObject:
         return [(round(l, 3), round(r, 3), round(a, 3), round(sa, 3), round(ma, 3)) for l, r, a, sa, ma in zip(self.L, self.R, self.A, self.SA, self.MA)]
 
     def springBack(self, material):
+        self.compute_compensation(20, self.compensation_coeff)
         for i in range(len(self.A)):
             if self.A[i] < -.05:
                 self.SA.append(self.A[i] - 1)
