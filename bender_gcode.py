@@ -8,7 +8,6 @@ class benderGCode:
         self.L = point_object.L
         self.R = point_object.R
         self.A = point_object.A
-        self.SA = point_object.SA
         self.MA = point_object.MA
 
         self.command_dictionary = {

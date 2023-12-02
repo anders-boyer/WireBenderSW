@@ -14,91 +14,11 @@ class importCoords:
         # Initialize the Tkinter window
         self.point_objects = []
         self.plotIdx = 0
-
         # Arrays to store parsed data
         self.i, self.j, self.k = [], [], []
-
         self.figure, self.canvas = figure, canvas
-
         self.convertedBool = False
-        self.compensation_coeff = np.zeros(1, 2)
-
-    # def calculate_distance(self, idx1, idx2):
-    #     # Calculate Euclidean distance between points at idx1 and idx2
-    #     distance = math.sqrt((self.i[idx2] - self.i[idx1]) ** 2 +
-    #                          (self.j[idx2] - self.j[idx1]) ** 2 +
-    #                          (self.k[idx2] - self.k[idx1]) ** 2)
-    #     return distance
-    #
-    # def segment_points(self):
-    #     segment_ends = []  # Initialize as an empty list, no need for the initial (0, 0) tuple
-    #     threshold_multiplier = 1.05
-    #
-    #     for i in range(1, len(self.i)):
-    #         # Calculate the distance between the current point (i) and the point at (i-1)
-    #         distance = self.calculate_distance(i, i - 1)
-    #
-    #         if i >= 2:
-    #             # Calculate the threshold based on 1.1 times the distance from point (i-1) and (i-2)
-    #             threshold = threshold_multiplier * self.calculate_distance(i - 1, i - 2)
-    #         else:
-    #             # For the first point, set the threshold to a high value to prevent an out-of-bounds error
-    #             threshold = float('inf')
-    #
-    #         # If the distance between the current point and the previous point is greater than the threshold, consider it a segment end
-    #         if distance > threshold:
-    #             # Get the end index of the last segment in segment_ends list
-    #             last_end_idx = segment_ends[-1][1] if segment_ends else -1
-    #             # Append the segment indices as a tuple to segment_ends list, starting from the next index after the last segment
-    #             segment_ends.append((last_end_idx + 1, i - 1))
-    #
-    #     # If there are segments, add the last point as a segment end
-    #     if segment_ends:
-    #         segment_ends.append((segment_ends[-1][1] + 1, len(self.i) - 1))
-    #
-    #     return segment_ends
-    #
-    # def reorder_segments(self, segment_ends):
-    #     while True:
-    #         # Make a deep copy of the current state
-    #         i_copy, j_copy, k_copy = self.i.copy(), self.j.copy(), self.k.copy()
-    #         reversed_segments = 0  # Variable to track the number of segments reversed in this iteration
-    #
-    #         for segment in segment_ends:
-    #             start_idx, end_idx = segment
-    #             if self.should_reverse_segment(start_idx, end_idx):
-    #                 reversed_segment = self.reverse_segment(start_idx, end_idx)
-    #                 i_copy[start_idx:end_idx + 1] = reversed_segment[0]
-    #                 j_copy[start_idx:end_idx + 1] = reversed_segment[1]
-    #                 k_copy[start_idx:end_idx + 1] = reversed_segment[2]
-    #                 reversed_segments += 1  # Increment the count of reversed segments
-    #
-    #         # If no segments were reversed, the arrangement is optimized, break the loop
-    #         if reversed_segments == 0:
-    #             break
-    #
-    #         # Update the points with the reordered segments
-    #         self.i, self.j, self.k = i_copy, j_copy, k_copy
-    #
-    # def should_reverse_segment(self, start_idx, end_idx):
-    #     # Check if reversing the segment would result in shorter distances between points
-    #     if start_idx <= 1:
-    #         original_distance = self.calculate_distance(end_idx, end_idx + 1)
-    #         reversed_distance = self.calculate_distance(start_idx, end_idx + 1)
-    #     elif end_idx >= len(self.i) - 1:
-    #         original_distance = self.calculate_distance(start_idx - 1, start_idx)
-    #         reversed_distance = self.calculate_distance(start_idx - 1, end_idx)
-    #     else:
-    #         original_distance = (self.calculate_distance(start_idx, start_idx - 1) + self.calculate_distance(end_idx,
-    #                                                                                                          end_idx + 1))
-    #         reversed_distance = self.calculate_distance(start_idx, end_idx) + self.calculate_distance(start_idx,
-    #                                                                                                   end_idx + 1)
-    #     return reversed_distance < original_distance
-    #
-    # def reverse_segment(self, start_idx, end_idx):
-    #     # Reverse the order of points in the segment defined by start_idx and end_idx
-    #     return self.i[start_idx:end_idx + 1][::-1], self.j[start_idx:end_idx + 1][::-1], self.k[start_idx:end_idx + 1][
-    #                                                                                      ::-1]
+        self.compensation_coeff = np.zeros(2)
 
     def clear_file(self):
         self.point_objects = []
@@ -106,6 +26,7 @@ class importCoords:
         self.plotIdx = 0
         self.figure.clear()
         self.convertedBool = False
+        self.compensation_coeff = np.zeros(2)
 
     def browse_files(self):
         # Open a file explorer dialog to select a file
@@ -136,7 +57,7 @@ class importCoords:
             # if filter_straight == 1:
             #     self.filter_straight_sections()
 
-            point_object = pointObject(self.i, self.j, self.k, self.compensation_coeff, self.compute_compensation)
+            point_object = pointObject(self.i, self.j, self.k)
             self.point_objects.append(point_object)
             # Create deep copies of the first PointObject instance
             new_point_objects = [copy.deepcopy(self.point_objects[0]) for _ in range(3)]
@@ -145,66 +66,6 @@ class importCoords:
         else:
             print("No data")
         return os.path.basename(filename)
-
-    # def filter_straight_sections(self):
-    #     i_filtered, j_filtered, k_filtered = [], [], []
-    #
-    #     # Initialize start and end indices of straight segments
-    #     start_idx = 0
-    #     end_idx = 1
-    #
-    #     i_filtered.append(self.i[start_idx])
-    #     j_filtered.append(self.j[start_idx])
-    #     k_filtered.append(self.k[start_idx])
-    #
-    #     while start_idx < len(self.i) - 2:
-    #
-    #         # Find the end index of the current straight segment
-    #         while end_idx < len(self.i) - 1 and self.is_straight_segment(start_idx, end_idx):
-    #             end_idx += 1
-    #         # Add start and end points of the straight segment to filtered lists
-    #
-    #         i_filtered.append(self.i[end_idx])
-    #         j_filtered.append(self.j[end_idx])
-    #         k_filtered.append(self.k[end_idx])
-    #
-    #         # Move start index to the next potential straight segment
-    #         start_idx = end_idx
-    #         end_idx = end_idx + 1
-    #
-    #     if end_idx < len(self.i):
-    #         i_filtered.append(self.i[end_idx])
-    #         j_filtered.append(self.j[end_idx])
-    #         k_filtered.append(self.k[end_idx])
-    #
-    #     # Update self.i, self.j, and self.k with filtered values
-    #     self.clear_file()
-    #     self.i, self.j, self.k = i_filtered, j_filtered, k_filtered
-    #
-    # def is_straight_segment(self, start_idx, end_idx):
-    #     angle_threshold_degrees = 1
-    #
-    #     # Check if the segment defined by idx and end idx is straight
-    #     # Calculate the angle between the vectors using atan2
-    #     start_vector = (self.i[start_idx + 1] - self.i[start_idx], self.j[start_idx + 1] - self.j[start_idx],
-    #                     self.k[start_idx + 1] - self.k[start_idx])
-    #     next_vector = (self.i[end_idx + 1] - self.i[end_idx], self.j[end_idx + 1] - self.j[end_idx],
-    #                    self.k[end_idx + 1] - self.k[end_idx])
-    #
-    #     cross_product = (
-    #         start_vector[1] * next_vector[2] - start_vector[2] * next_vector[1],
-    #         start_vector[2] * next_vector[0] - start_vector[0] * next_vector[2],
-    #         start_vector[0] * next_vector[1] - start_vector[1] * next_vector[0]
-    #     )
-    #
-    #     dot_product = sum(a * b for a, b in zip(start_vector, next_vector))
-    #     angle_rad = math.atan2(math.sqrt(sum(c ** 2 for c in cross_product)), dot_product)
-    #
-    #     # Convert the threshold from degrees to radians for comparison
-    #     angle_threshold_rad = math.radians(angle_threshold_degrees)
-    #
-    #     # Return True if the angle is below the threshold (segment is straight), False otherwise
-    #     return angle_rad < angle_threshold_rad
 
     # not used
     def get_coord(self, column_index, element_index):
@@ -247,7 +108,6 @@ class importCoords:
             return
 
         # minimum extrude distance handling
-
         for points in self.point_objects:
             i = 1
             while i < len(points.X) - 1:
@@ -366,13 +226,16 @@ class importCoords:
         self.canvas.draw()
 
 
-    def calculate_bends(self, material, diameter):
+    def calculate_bends(self, material_file, diameter):
+
+        self.compute_compensation_coefficients(material_file)
 
         for points in self.point_objects:
             points.find_bends(diameter)
+            points.apply_compensation(self.compensation_coeff)
 
 
-            # points.springBack(material)
+#             points.springBack(material)
 #            points.filterCloseVertices(diameter, pinPos)
 #             points.angleSolver(diameter, pinPos)
 
@@ -449,32 +312,41 @@ class importCoords:
         dot_product = sum(a * b for a, b in zip(start_vector, next_vector))
         return math.atan2(math.sqrt(sum(c ** 2 for c in cross_product)), dot_product)
 
+    # returns array of compensation coefficients given a filename
+    # x is the desired angle, y is the motor angle (MA)
     def compute_compensation_coefficients(self, filename):
+        filePath = os.path.join("Materials", filename)
+
         # Load csv
-        compensation_data = np.loadtxt(filename,
-                    delimiter=",", dtype=str)
+        compensation_data = np.loadtxt(filePath, delimiter=",", dtype=str)
         compensation_data = compensation_data.astype(float)
         
-        num_rows, num_cols = compensation_data.shape
+        # num_rows, num_cols = compensation_data.shape
 
-        best_fit = np.polyfit(compensation_data[:, 1], compensation_data[:, 0], 1)
-        lowest_average_error = 100
-        for i in range(1, 10):
-            current_fit = np.polyfit(compensation_data[:, 1], compensation_data[:, 0], i)
-            current_average_error = 0
+        best_fit = np.polyfit(compensation_data[:, 1], compensation_data[:, 0], 3)
 
-            for j in range(0, num_rows):
-                computed = self.compute_compensation(compensation_data[j, 1], current_fit)
-                current_average_error += np.abs(computed - compensation_data[j, 0])
-            current_average_error /= num_rows
-
-            if current_average_error < lowest_average_error:
-                best_fit = current_fit
-                lowest_average_error = current_average_error
+        # best_fit = np.polyfit(compensation_data[:, 1], compensation_data[:, 0], 1)
+        # lowest_average_error = 100
+        # for i in range(1, 10):
+        #     current_fit = np.polyfit(compensation_data[:, 1], compensation_data[:, 0], i)
+        #     current_average_error = 0
+        #
+        #     for j in range(0, num_rows):
+        #         computed = np.polyval(compensation_data[j, 1], current_fit)
+        #         # computed = self.compute_compensation(compensation_data[j, 1], current_fit)
+        #         current_average_error += np.abs(computed - compensation_data[j, 0])
+        #     current_average_error /= num_rows
+        #
+        #     if current_average_error < lowest_average_error:
+        #         best_fit = current_fit
+        #         lowest_average_error = current_average_error
         self.compensation_coeff = best_fit
-    
-    def compute_compensation(desired_angle, compensation_coeff):
-        command_angle = compensation_coeff[compensation_coeff.size-1]
-        for i in range(0, compensation_coeff.size - 1):
-            command_angle += compensation_coeff[i] * desired_angle
-        return command_angle
+
+
+    # # this method returns the motor angle given an array of coefficients and a desired angle
+    # @staticmethod
+    # def compute_compensation(desired_angle, compensation_coeff):
+    #     command_angle = compensation_coeff[compensation_coeff.size-1]
+    #     for i in range(0, compensation_coeff.size - 1):
+    #         command_angle += compensation_coeff[i] * desired_angle
+    #     return command_angle

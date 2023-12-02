@@ -1,4 +1,4 @@
-
+import re
 from tkinter import *
 from tkinter import ttk, messagebox  # Import ttk for themed widgets
 from tkinter import filedialog
@@ -9,6 +9,8 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from point_object import pointObject
 import math
+# pyinstaller --onefile --add-data "Materials;Materials" your_script.py
+
 
 
 class GUI:
@@ -52,39 +54,20 @@ class GUI:
         self.scrollbar1.config(command=self.bend_table.yview)
 
         self.bend_table["columns"] = (
-            "1", "2", "3", "4", "5")
+            "1", "2", "3", "4")
 
         self.bend_table['show'] = 'headings'
 
         self.bend_table.column("1", width=2, anchor='c')
         self.bend_table.column("2", width=2, anchor='c')
         self.bend_table.column("3", width=2, anchor='c')
-        self.bend_table.column("4", width=40, anchor='c')
-        self.bend_table.column("5", width=2, anchor='c')
-
+        self.bend_table.column("4", width=2, anchor='c')
 
         self.bend_table.heading("1", text="Length (mm)")
         self.bend_table.heading("2", text="Rotation (degrees)")
         self.bend_table.heading("3", text="Desired Angle (degrees)")
-        self.bend_table.heading("4", text="Angle + springback (degrees)")
-        self.bend_table.heading("5", text="Motor Angle (degrees)")
+        self.bend_table.heading("4", text="Motor Angle (degrees)")
 
-
-        # self.bendbox = Listbox(root)#, width=20, height=30)
-        # self.bendbox.grid(row=2, column=0, padx=15, pady=0, sticky="nsew", columnspan=2)
-        # self.scrollbar1 = Scrollbar(root)
-        # self.scrollbar1.grid(row=2, column=2, padx=0, pady=0, sticky="nsew")
-        # # Insert elements into the listbox
-        # # for values in range(100):
-        # #     self.bendbox.insert(END, values)
-        #     # Attaching Listbox to Scrollbar
-        # # Since we need to have a vertical
-        # # scroll we use yscrollcommand
-        # self.bendbox.config(yscrollcommand=self.scrollbar1.set)
-        # # setting scrollbar command parameter
-        # # to listbox.yview method its yview because
-        # # we need to have a vertical view
-        # self.scrollbar1.config(command=self.bendbox.yview)
 
         self.codeLabel = Label(root, text="Point Cloud")
         self.codeLabel.grid(row=3, column=0, padx=0, pady=0, sticky="sew", columnspan=3)
@@ -143,59 +126,27 @@ class GUI:
         tempObj = pointObject(i, j, k)
         self.gui.plot3d(tempObj, "", True)
 
-    # def show_import_popup(self):
-    #     # Create a Toplevel window (popup)
-    #     import_popup = Toplevel()
-    #     import_popup.title("Import Options")
-    #
-    #     # Dropdown for file selection
-    #     # file_label = Label(import_popup, text="File Type:")
-    #     # file_label.grid(row=0, column=0, padx=10, pady=5, sticky="w")
-    #
-    #     # file_options = ["TXT", "CSV"]  # Add more options if needed
-    #     # selected_file = StringVar()
-    #     # file_combobox = ttk.Combobox(import_popup, textvariable=selected_file, values=file_options)
-    #     # file_combobox.grid(row=0, column=1, padx=10, pady=5, sticky="w")
-    #     # file_combobox.set(file_options[0])  # Set default selection
-    #
-    #     # Checkbutton for straight section filtering
-    #     straight_filter_var = IntVar()
-    #     straight_filter_var.set(0)
-    #     straight_filter_checkbox = Checkbutton(import_popup, text="Straight Section Filtering?", variable=straight_filter_var)
-    #     straight_filter_checkbox.grid(row=1, column=0, padx=10, pady=5, sticky="w")
-    #
-    #     # Checkbutton for segment reordering
-    #     reorder_var = IntVar()
-    #     reorder_var.set(0)
-    #     reorder_checkbox = Checkbutton(import_popup, text="Segment Reordering (did you use the provided SolidWorks macro?)", variable=reorder_var)
-    #     reorder_checkbox.grid(row=2, column=0, columnspan=2, padx=10, pady=5, sticky="w")
-    #
-    #     # Next button
-    #     next_button = Button(import_popup, text="Next", command=lambda: self.import_next(import_popup, straight_filter_var.get(), reorder_var.get()))
-    #     next_button.grid(row=3, column=0, columnspan=2, pady=10)
-
     def import_next(self):
         # Handle the import options and close the popup
         # print("File Type:", file_type)
         # print("Straight Filter:", straight_filter)
         # print("Segment Reordering:", reorder_option)
-        try:
-            self.filename = self.gui.browse_files()
-            self.gui.plot3d(self.gui.point_objects[0], self.filename, False)
 
-            self.button_calculate_bends.config(text="Calculate Bends", command=self.calculate_bends_popup, state="normal")
+        self.filename = self.gui.browse_files()
+        self.gui.plot3d(self.gui.point_objects[0], self.filename, False)
 
-            text_array = self.gui.print_csv()
+        self.button_calculate_bends.config(text="Calculate Bends", command=self.calculate_bends_popup, state="normal")
 
-            self.bend_table.delete(*self.bend_table.get_children())
-            self.codebox.delete(0, END)
-            self.gCodeString = []
+        text_array = self.gui.print_csv()
 
-            for i in range(0, len(text_array)-1):
-                self.codebox.insert(END, f'   {text_array[i]}')
-                self.linebox.insert(END, f'{i+1}   ')
-        except:
-            print("Import window closed")
+        self.bend_table.delete(*self.bend_table.get_children())
+        self.codebox.delete(0, END)
+        self.gCodeString = []
+
+        for i in range(0, len(text_array)-1):
+            self.codebox.insert(END, f'   {text_array[i]}')
+            self.linebox.insert(END, f'{i+1}   ')
+
 
         # Close the import popup
 
@@ -232,21 +183,13 @@ class GUI:
         Grid.columnconfigure(calculate_bends_popup, 0, weight=1)
         Grid.columnconfigure(calculate_bends_popup, 1, weight=1)
 
-        # # Dropdown for bend pin selection
-        # bend_pin_label = Label(calculate_bends_popup, text="Bend Pin Location:")
-        # bend_pin_label.grid(row=0, column=0, padx=10, pady=5, sticky="w")
-        # pin_options = ["12 mm", "16.5 mm", "27.5 mm"]
-        # selected_pin = StringVar()
-        # file_combobox = ttk.Combobox(calculate_bends_popup, textvariable=selected_pin, values=pin_options)
-        # file_combobox.grid(row=0, column=1, padx=10, pady=5, sticky="w")
-        # file_combobox.set(pin_options[1])  # Set default selection
-
         # Dropdown for material and diameter selection
         material_label = Label(calculate_bends_popup, text="Material:")
         material_label.grid(row=0, column=0, padx=10, pady=10, sticky="w")
-        material_options = ["Spring Steel - 0.8 mm", "Spring Steel - 1 mm",
+        material_options = ["Spring Steel - 0.8mm", "Spring Steel - 1mm",
                             "Spring Steel - 1.5mm", "Galvanized Steel - 2mm",
-                            "Custom - 12mm Pin", "Custom - 16.5 or 27.5mm pin"]
+                            "Custom - 12mm Pin", "Custom - 16.5mm Pin",
+                            "Custom - 27.5mm Pin"]
         material_option = StringVar()
         file_combobox = ttk.Combobox(calculate_bends_popup, textvariable=material_option, values=material_options)
         file_combobox.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
@@ -262,19 +205,87 @@ class GUI:
         next_button = Button(calculate_bends_popup, text="Next", command=lambda: self.calc_bends_next(calculate_bends_popup, material_option.get(), orientation_var.get()))
         next_button.grid(row=2, column=0, columnspan=2, pady=10)
 
-    def calc_bends_next(self, calculate_bends_popup, material, orientation):
 
 
-        if (material == "Custom - 12mm Pin") or (material == "Custom - 12mm Pin"):
+    def custom_material_popup(self):
+        def on_next_button():
+            nonlocal filename, pinPos  # Use nonlocal to modify outer variables
 
-            pass
+            filename = filedialog.askopenfilename(initialdir="/", title="Select a File",
+                                                  filetypes=(("CSV files", "*.csv"), ("All files", "*.*")))
+            diameter = float(entry_diameter.get())
 
-        diameter = float(diameter.split("mm")[0].strip())
-        pinPos = float(pinPos.split("mm")[0].strip())
+            custom_material_popup.destroy()
+
+        filename = None  # Initialize filename to None
+        pinPos = None  # Initialize pinPos to None
+
+        custom_material_popup = Toplevel()
+        custom_material_popup.title("Custom Material Diameter")
+
+        # Create labels and entry widget
+        label_diameter = Label(custom_material_popup, text="Diameter:")
+        entry_diameter = Entry(custom_material_popup)
+        label_mm = Label(custom_material_popup, text="mm")
+
+        # Pack labels and entry widget
+        label_diameter.grid(row=0, column=0, padx=5, pady=5)
+        entry_diameter.grid(row=0, column=1, padx=5, pady=5)
+        label_mm.grid(row=0, column=2, padx=5, pady=5)
+
+        # Create "Next" button
+        next_button = Button(custom_material_popup, text="Next", command=on_next_button)
+        next_button.grid(row=1, column=0, columnspan=3, pady=10)
+
+        custom_material_popup.wait_window()  # Wait for the popup to be closed
+
+        return filename, diameter
+
+
+    def calc_bends_next(self, calculate_bends_popup, materialString, orientation):
+
+        if (materialString == "Custom - 12mm Pin") or (materialString == "Custom - 16.5mm Pin") or (materialString == "Custom - 27.5mm Pin"):
+            calculate_bends_popup.destroy()
+            materialFile, diameter = self.custom_material_popup()
+
+            if materialString == "Custom - 12mm Pin":
+                pinPos = 12.0
+            elif materialString == "Custom - 16.5mm Pin":
+                pinPos = 16.5
+            else:
+                pinPos = 27.5
+        else:
+            calculate_bends_popup.destroy()
+            # Create a dictionary for the string to filename mapping
+
+            string_to_file_map = {
+                "Spring Steel - 0.8mm": "file1.csv",
+                "Spring Steel - 1mm": "file2.txt",
+                "Spring Steel - 1.5mm": "file3.txt",
+                "Galvanized Steel - 2mm": "file3.txt",
+            }
+
+            materialFile = string_to_file_map.get(materialString)
+            if materialFile is not None:
+                print(f"The filename for key '{materialString}' is '{materialFile}'")
+            else:
+                print(f"No filename found for key '{materialString}'")
+
+            diameter = float(re.search(r"(\d+(\.\d+)?)\s*mm", materialString).group(1))
+
+
+            string_to_pin_map = {
+                "Spring Steel - 0.8mm": 12.0,
+                "Spring Steel - 1mm": 12.0,
+                "Spring Steel - 1.5mm": 12.0,
+                "Galvanized Steel - 2mm": 12.0,
+            }
+
+            pinPos = string_to_pin_map.get(materialString)
 
         self.gui.convert_coords(diameter, pinPos)
         self.button_calculate_bends.config(text="Next Plot", command=self.next)
-        self.gui.calculate_bends(material, diameter)
+        self.gui.calculate_bends(materialFile, diameter)
         self.collision_label.config(
             text=f'This orientation has {self.gui.point_objects[self.gui.plotIdx].collision_count} collisions'
                  f' and {self.gui.point_objects[self.gui.plotIdx].deleted_vertices} deleted vertices')
@@ -304,8 +315,6 @@ class GUI:
         self.codeLabel.config(text="G-Code")
 
         self.file_menu.entryconfig(1, state="normal")
-
-        calculate_bends_popup.destroy()
 
     def next(self):
         self.gui.incrementIdx()
