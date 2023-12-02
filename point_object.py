@@ -201,6 +201,7 @@ class pointObject:
                 self.MA.append(np.polyval(compensation_coeff, abs(self.A[i])))
             else:
                 self.MA.append(0.0)
+
     # def springBack(self, material):
     #     self.compute_compensation(20, self.compensation_coeff)
     #     for i in range(len(self.A)):

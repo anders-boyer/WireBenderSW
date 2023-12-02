@@ -325,21 +325,21 @@ class importCoords:
 
         best_fit = np.polyfit(compensation_data[:, 1], compensation_data[:, 0], 3)
 
-        # best_fit = np.polyfit(compensation_data[:, 1], compensation_data[:, 0], 1)
-        # lowest_average_error = 100
-        # for i in range(1, 10):
-        #     current_fit = np.polyfit(compensation_data[:, 1], compensation_data[:, 0], i)
-        #     current_average_error = 0
-        #
-        #     for j in range(0, num_rows):
-        #         computed = np.polyval(compensation_data[j, 1], current_fit)
-        #         # computed = self.compute_compensation(compensation_data[j, 1], current_fit)
-        #         current_average_error += np.abs(computed - compensation_data[j, 0])
-        #     current_average_error /= num_rows
-        #
-        #     if current_average_error < lowest_average_error:
-        #         best_fit = current_fit
-        #         lowest_average_error = current_average_error
+        best_fit = np.polyfit(compensation_data[:, 1], compensation_data[:, 0], 1)
+        lowest_average_error = 100
+        for i in range(1, 10):
+            current_fit = np.polyfit(compensation_data[:, 1], compensation_data[:, 0], i)
+            current_average_error = 0
+
+            for j in range(0, num_rows):
+                computed = np.polyval(compensation_data[j, 1], current_fit)
+                # computed = self.compute_compensation(compensation_data[j, 1], current_fit)
+                current_average_error += np.abs(computed - compensation_data[j, 0])
+            current_average_error /= num_rows
+
+            if current_average_error < lowest_average_error:
+                best_fit = current_fit
+                lowest_average_error = current_average_error
         self.compensation_coeff = best_fit
 
 
