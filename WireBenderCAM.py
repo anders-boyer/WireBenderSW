@@ -1,16 +1,22 @@
+"""
+This class contains the entry point to the software and contains methods for generating all GUI elements
+
+Build:
+    pyinstaller --onefile --noconsole --collect-data sv_ttk WireBenderCAM.py
+
+Anderson Boyer
+"""
+
 import re
 from tkinter import *
 from tkinter import ttk, messagebox  # Import ttk for themed widgets
 from tkinter import filedialog
-
-from bender_gcode import benderGCode
-from import_coords import importCoords
+from bender_gcode import BenderGCode
+from import_coords import ImportCoords
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
-from point_object import pointObject
-import math
-# pyinstaller --onefile --add-data "Materials;Materials" your_script.py
-
+from point_object import PointObject
+import sv_ttk
 
 
 class GUI:
@@ -34,23 +40,24 @@ class GUI:
         frame = Frame(root)
         frame.grid(row=0, column=0, sticky=N + S + E + W)
 
-        self.button_calculate_bends = Button(root, text="Calculate Bends", command=self.calculate_bends_popup, state="disabled")
-        self.button_calculate_bends.grid(row=0, column=0, columnspan=3, padx=(15, 0), pady=2, sticky="nsew")
+        self.button_calculate_bends = ttk.Button(root, text="Calculate Bends", command=self.calculate_bends_popup,
+                                                 state="disabled")
+        self.button_calculate_bends.grid(row=0, column=0, columnspan=3, padx=(0, 0), pady=0, sticky="nsew")
 
-        self.codeLabel = Label(root, text="Bend Table")
-        self.codeLabel.grid(row=1, column=0, padx=0, pady=0, sticky="sew", columnspan=3)
+        self.codeLabel = ttk.Label(root, text="Bend Table")
+        self.codeLabel.grid(row=1, column=0, padx=(15, 0), pady=(10, 0), sticky="nsew", columnspan=3)
+        self.codeLabel.configure(anchor='center')
 
-        self.collision_label = Label(root, text="")
-        self.collision_label.grid(row=0, column=3, padx=0, pady=0, sticky="nsew")
+        self.collision_label = ttk.Label(root, text="")
+        self.collision_label.grid(row=0, column=3, padx=(0, 0), pady=0, sticky="nsew")
+        self.collision_label.configure(anchor="center")
 
         self.bend_table = ttk.Treeview(window, selectmode='browse')
         self.bend_table.grid(row=2, column=0, padx=(15, 0), pady=0, sticky="nsew", columnspan=2)
-        self.scrollbar1 = Scrollbar(root)
+        self.scrollbar1 = ttk.Scrollbar(root)
         self.scrollbar1.grid(row=2, column=2, padx=0, pady=0, sticky="nsew")
         self.bend_table.config(yscrollcommand=self.scrollbar1.set)
-        # setting scrollbar command parameter
-        # to listbox.yview method its yview because
-        # we need to have a vertical view
+
         self.scrollbar1.config(command=self.bend_table.yview)
 
         self.bend_table["columns"] = (
@@ -68,9 +75,9 @@ class GUI:
         self.bend_table.heading("3", text="Desired Angle (degrees)")
         self.bend_table.heading("4", text="Motor Angle (degrees)")
 
-
-        self.codeLabel = Label(root, text="Point Cloud")
-        self.codeLabel.grid(row=3, column=0, padx=0, pady=0, sticky="sew", columnspan=3)
+        self.codeLabel = ttk.Label(root, text="Point Cloud")
+        self.codeLabel.grid(row=3, column=0, padx=(15, 0), pady=(10, 0), sticky="nsew", columnspan=3)
+        self.codeLabel.configure(anchor='center')
 
         def yview(*args):
             self.linebox.yview(*args)
@@ -88,7 +95,7 @@ class GUI:
         self.codebox = Listbox(root)  # , width=20, height=40)
         self.codebox.grid(row=4, column=1, padx=(0, 0), pady=(0, 5), sticky="nsew")
 
-        self.scrollbar2 = Scrollbar(root, command=yview)
+        self.scrollbar2 = ttk.Scrollbar(root, command=yview)
         self.scrollbar2.grid(row=4, column=2, padx=0, pady=(0, 5), sticky="nsew")
 
         self.codebox.config(yscrollcommand=self.scrollbar2.set)
@@ -97,18 +104,13 @@ class GUI:
         # Bind the mouse wheel event to the on_mousewheel function
         self.codebox.bind("<MouseWheel>", on_mousewheel)
         self.linebox.bind("<MouseWheel>", on_mousewheel)
-        # setting scrollbar command parameter
-        # to listbox.yview method its yview because
-        # we need to have a vertical view
-        # self.scrollbar2.config(command=self.codebox.yview)
-        # self.scrollbar2.config(command=self.linebox.yview)
 
         # Create the plot area on the right side
-        self.figure = Figure(dpi=100)
+        self.figure = Figure(dpi=80, facecolor='#1e1e1e')  # Set the background color of the figure
         self.canvas = FigureCanvasTkAgg(self.figure, master=root)  # A tk.DrawingArea.
         self.canvas.get_tk_widget().grid(row=1, column=3, sticky="nsew", rowspan=4, padx=0, pady=0)
 
-        self.gui = importCoords(self.figure, self.canvas)
+        self.coords = ImportCoords(self.figure, self.canvas)
 
         # Create menu bar
         self.menubar = Menu(root)
@@ -123,32 +125,25 @@ class GUI:
         root.config(menu=self.menubar)
 
         i, j, k = [0], [0], [0]
-        tempObj = pointObject(i, j, k)
-        self.gui.plot3d(tempObj, "", True)
+        temp_obj = PointObject(i, j, k)
+        self.coords.plot3d(temp_obj, "", True)
 
     def import_next(self):
-        # Handle the import options and close the popup
-        # print("File Type:", file_type)
-        # print("Straight Filter:", straight_filter)
-        # print("Segment Reordering:", reorder_option)
 
-        self.filename = self.gui.browse_files()
-        self.gui.plot3d(self.gui.point_objects[0], self.filename, False)
+        self.filename = self.coords.browse_files()
+        self.coords.plot3d(self.coords.point_objects[0], self.filename, False)
 
         self.button_calculate_bends.config(text="Calculate Bends", command=self.calculate_bends_popup, state="normal")
 
-        text_array = self.gui.print_csv()
+        text_array = self.coords.print_csv()
 
         self.bend_table.delete(*self.bend_table.get_children())
         self.codebox.delete(0, END)
         self.gCodeString = []
 
-        for i in range(0, len(text_array)-1):
+        for i in range(0, len(text_array)):
             self.codebox.insert(END, f'   {text_array[i]}')
             self.linebox.insert(END, f'{i+1}   ')
-
-
-        # Close the import popup
 
     def export_action(self):
         # Open a file dialog for saving the G-code file
@@ -162,8 +157,9 @@ class GUI:
         if file_path:
             # Save the G-code content to the chosen file
             with open(file_path, 'w') as file:
-                for line in self.gCodeString[0]:
-                    file.write(line + '\n')
+                for line1, line2 in zip(self.gCodeString[0], self.gCodeString[1]):
+                    combined_line = f"{line1.ljust(20)}{line2}"  # Adjust the width (20 in this example) based on your needs
+                    file.write(combined_line + '\n')
 
             # Inform the user that the file has been saved
             messagebox.showinfo("Save Complete", f"File saved at:\n{file_path}")
@@ -179,17 +175,17 @@ class GUI:
         Grid.rowconfigure(calculate_bends_popup, 0, weight=1)
         Grid.rowconfigure(calculate_bends_popup, 1, weight=1)
         Grid.rowconfigure(calculate_bends_popup, 2, weight=1)
-
         Grid.columnconfigure(calculate_bends_popup, 0, weight=1)
         Grid.columnconfigure(calculate_bends_popup, 1, weight=1)
 
         # Dropdown for material and diameter selection
-        material_label = Label(calculate_bends_popup, text="Material:")
-        material_label.grid(row=0, column=0, padx=10, pady=10, sticky="w")
-        material_options = ["Spring Steel - 0.8mm", "Spring Steel - 1mm",
-                            "Spring Steel - 1.5mm", "Galvanized Steel - 2mm",
-                            "Custom - 12mm Pin", "Custom - 16.5mm Pin",
-                            "Custom - 27.5mm Pin"]
+        material_label = ttk.Label(calculate_bends_popup, text="Material:")
+        material_label.grid(row=0, column=0, padx=10, pady=10)
+        material_options = ["1085 Steel - 1mm", "1085 Steel - 1.5mm",
+                            "Galvanized Steel - 2mm", "Mild Steel - 3mm",
+                            "Spring Steel - 3mm", "Mild Steel - 1/8 inch", "Custom - 12mm Pin",
+                            "Custom - 16.5mm Pin", "Custom - 27.5mm Pin"]
+        material_label.config(anchor='e')
         material_option = StringVar()
         file_combobox = ttk.Combobox(calculate_bends_popup, textvariable=material_option, values=material_options)
         file_combobox.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
@@ -198,18 +194,19 @@ class GUI:
         # Checkbutton for straight section filtering
         orientation_var = IntVar()
         orientation_var.set(1)
-        orientation_checkbox = Checkbutton(calculate_bends_popup, text="Show best orientation only (lowest collisions)",variable=orientation_var)
+        orientation_checkbox = ttk.Checkbutton(
+            calculate_bends_popup, text="Show best orientation only (lowest collisions)", variable=orientation_var)
         orientation_checkbox.grid(row=1, column=0, columnspan=2, padx=10, pady=10)
 
         # Next button
-        next_button = Button(calculate_bends_popup, text="Next", command=lambda: self.calc_bends_next(calculate_bends_popup, material_option.get(), orientation_var.get()))
+        next_button = ttk.Button(calculate_bends_popup, text="Next", command=lambda: self.calc_bends_next(
+            calculate_bends_popup, material_option.get(), orientation_var.get()))
         next_button.grid(row=2, column=0, columnspan=2, pady=10)
 
-
-
-    def custom_material_popup(self):
+    @staticmethod
+    def custom_material_popup():
         def on_next_button():
-            nonlocal filename, pinPos  # Use nonlocal to modify outer variables
+            nonlocal filename, diameter  # Use nonlocal to modify outer variables
 
             filename = filedialog.askopenfilename(initialdir="/", title="Select a File",
                                                   filetypes=(("CSV files", "*.csv"), ("All files", "*.*")))
@@ -218,153 +215,174 @@ class GUI:
             custom_material_popup.destroy()
 
         filename = None  # Initialize filename to None
-        pinPos = None  # Initialize pinPos to None
+        diameter = None  # Initialize pinPos to None
 
         custom_material_popup = Toplevel()
         custom_material_popup.title("Custom Material Diameter")
+        custom_material_popup.geometry("400x120")
+
+        Grid.rowconfigure(custom_material_popup, 0, weight=1)
+        Grid.rowconfigure(custom_material_popup, 1, weight=1)
+        Grid.rowconfigure(custom_material_popup, 2, weight=1)
+
+        Grid.columnconfigure(custom_material_popup, 0, weight=1)
+        Grid.columnconfigure(custom_material_popup, 1, weight=1)
 
         # Create labels and entry widget
-        label_diameter = Label(custom_material_popup, text="Diameter:")
-        entry_diameter = Entry(custom_material_popup)
-        label_mm = Label(custom_material_popup, text="mm")
+        label_diameter = ttk.Label(custom_material_popup, text="Diameter:")
+        entry_diameter = ttk.Entry(custom_material_popup)
+        label_mm = ttk.Label(custom_material_popup, text="mm")
 
         # Pack labels and entry widget
-        label_diameter.grid(row=0, column=0, padx=5, pady=5)
-        entry_diameter.grid(row=0, column=1, padx=5, pady=5)
-        label_mm.grid(row=0, column=2, padx=5, pady=5)
+        label_diameter.grid(row=0, column=0, padx=10, pady=5)
+        entry_diameter.grid(row=0, column=1, padx=10, pady=5)
+        label_mm.grid(row=0, column=2, padx=(0, 10), pady=5)
 
         # Create "Next" button
-        next_button = Button(custom_material_popup, text="Next", command=on_next_button)
+        next_button = ttk.Button(custom_material_popup, text="Import CSV", command=on_next_button)
         next_button.grid(row=1, column=0, columnspan=3, pady=10)
 
         custom_material_popup.wait_window()  # Wait for the popup to be closed
 
         return filename, diameter
 
+    @staticmethod
+    def warning_popup(message):
+        messagebox.showwarning("Warning", message)
 
-    def calc_bends_next(self, calculate_bends_popup, materialString, orientation):
+    def calc_bends_next(self, calculate_bends_popup, material_string, orientation):
 
-        if (materialString == "Custom - 12mm Pin") or (materialString == "Custom - 16.5mm Pin") or (materialString == "Custom - 27.5mm Pin"):
+        if ((material_string == "Custom - 12mm Pin") or (material_string == "Custom - 16.5mm Pin") or
+                (material_string == "Custom - 27.5mm Pin")):
             calculate_bends_popup.destroy()
-            materialFile, diameter = self.custom_material_popup()
 
-            if materialString == "Custom - 12mm Pin":
-                pinPos = 12.0
-            elif materialString == "Custom - 16.5mm Pin":
-                pinPos = 16.5
+            material_file, diameter = self.custom_material_popup()
+
+            if material_string == "Custom - 12mm Pin":
+                pin_pos = 12.0
+            elif material_string == "Custom - 16.5mm Pin":
+                pin_pos = 16.5
             else:
-                pinPos = 27.5
+                pin_pos = 27.5
+
+            if (pin_pos < 12.1) & (diameter > 2.6):
+                self.warning_popup("You must use the 16.5 mm pin with this diameter!\nSelection has been changed.")
+                pin_pos = 16.5
         else:
             calculate_bends_popup.destroy()
-            # Create a dictionary for the string to filename mapping
 
+            # Create a dictionary for the string to filename mapping
             string_to_file_map = {
-                "Spring Steel - 0.8mm": "file1.csv",
-                "Spring Steel - 1mm": "file2.txt",
-                "Spring Steel - 1.5mm": "file3.txt",
-                "Galvanized Steel - 2mm": "file3.txt",
+                "1085 Steel - 1mm": "1085 Steel - 1mm.csv",
+                "1085 Steel - 1.5mm": "1085 Steel - 1_5mm.csv",
+                "Galvanized Steel - 2mm": "Galvanized Steel - 2mm.csv",
+                "Mild Steel - 3mm": "Mild Steel - 3mm.csv",
+                "Spring Steel - 3mm": "Spring Steel - 3mm.csv",
+                "Mild Steel - 1/8 inch": "1_8in Mild Steel.csv"
             }
 
-            materialFile = string_to_file_map.get(materialString)
-            if materialFile is not None:
-                print(f"The filename for key '{materialString}' is '{materialFile}'")
+            material_file = string_to_file_map.get(material_string)
+            if material_file is not None:
+                print(f"The filename for key '{material_string}' is '{material_file}'")
             else:
-                print(f"No filename found for key '{materialString}'")
+                print(f"No filename found for key '{material_string}'")
 
-            diameter = float(re.search(r"(\d+(\.\d+)?)\s*mm", materialString).group(1))
-
+            if material_string == "Mild Steel - 1/8 inch":
+                diameter = 3.175
+            else:
+                diameter = float(re.search(r"(\d+(\.\d+)?)\s*mm", material_string).group(1))
 
             string_to_pin_map = {
-                "Spring Steel - 0.8mm": 12.0,
-                "Spring Steel - 1mm": 12.0,
-                "Spring Steel - 1.5mm": 12.0,
+                "1085 Steel - 1mm": 12.0,
+                "1085 Steel - 1.5mm": 12.0,
                 "Galvanized Steel - 2mm": 12.0,
+                "Mild Steel - 3mm": 16.5,
+                "Spring Steel - 3mm": 27.5,
+                "Mild Steel - 1/8 inch": 16.5
             }
 
-            pinPos = string_to_pin_map.get(materialString)
+            pin_pos = string_to_pin_map.get(material_string)
 
-        self.gui.convert_coords(diameter, pinPos)
+        self.coords.convert_coords(diameter, pin_pos)
         self.button_calculate_bends.config(text="Next Plot", command=self.next)
-        self.gui.calculate_bends(materialFile, diameter)
+        self.coords.calculate_bends(material_file, diameter)
         self.collision_label.config(
-            text=f'This orientation has {self.gui.point_objects[self.gui.plotIdx].collision_count} collisions'
-                 f' and {self.gui.point_objects[self.gui.plotIdx].deleted_vertices} deleted vertices')
-
+            text=f'This orientation has {self.coords.point_objects[self.coords.plotIdx].collision_count} collisions'
+                 f' and {self.coords.point_objects[self.coords.plotIdx].deleted_vertices} deleted vertices')
 
         if orientation == 1:
             min_collisions = 111111111111111
             min_idx = 4
 
-            for i in range(0, len(self.gui.point_objects)):
-                collision_count = self.gui.point_objects[self.gui.plotIdx].collision_count
+            for i in range(0, len(self.coords.point_objects)):
+                collision_count = self.coords.point_objects[self.coords.plotIdx].collision_count
                 if collision_count < min_collisions:
                     min_collisions = collision_count
                     min_idx = i
 
-            self.gui.plotIdx = min_idx
+            self.coords.plotIdx = min_idx
 
-            self.gui.update_gui()
+            self.coords.update_gui()
             self.collision_label.config(
-                text=f'This orientation has {self.gui.point_objects[self.gui.plotIdx].collision_count} collisions'
-                     f' and {self.gui.point_objects[self.gui.plotIdx].deleted_vertices} deleted vertices')
+                text=f'This orientation has {self.coords.point_objects[self.coords.plotIdx].collision_count} collisions'
+                     f' and {self.coords.point_objects[self.coords.plotIdx].deleted_vertices} deleted vertices')
 
             self.button_calculate_bends.config(state="disabled")
 
-        self.updateBendTable()
-        self.updateCodeBox()
+        self.update_bend_table()
+        self.update_code_box()
         self.codeLabel.config(text="G-Code")
-
         self.file_menu.entryconfig(1, state="normal")
 
+        self.warning_popup(f'IMPORTANT:\n\nFor proper operation and to prevent collisions with the machine, '
+                           f'you MUST use the\n\n{round(pin_pos, 1)} mm Pin\n\nPlease see the documentation '
+                           f'if this is unclear')
+
     def next(self):
-        self.gui.incrementIdx()
-        self.updateCodeBox()
-        self.gui.next()
+        # increment IDX
+        if self.coords.plotIdx >= 3:
+            self.coords.plotIdx = 0
+        else:
+            self.coords.plotIdx += 1
+        self.update_code_box()
+        self.coords.update_gui()
         self.collision_label.config(
-            text=f'This orientation has {self.gui.point_objects[self.gui.plotIdx].collision_count} collisions'
-                 f' and {self.gui.point_objects[self.gui.plotIdx].deleted_vertices} deleted vertices')
+            text=f'This orientation has {self.coords.point_objects[self.coords.plotIdx].collision_count} collisions'
+                 f' and {self.coords.point_objects[self.coords.plotIdx].deleted_vertices} deleted vertices')
 
-        self.updateBendTable()
+        self.update_bend_table()
 
-    def updateBendTable(self):
+    def update_bend_table(self):
         self.bend_table.delete(*self.bend_table.get_children())
         # Insert LRA data into bend_table
-        lra_data = self.gui.point_objects[self.gui.plotIdx].get_lra_data()
+        lra_data = self.coords.point_objects[self.coords.plotIdx].get_lra_data()
         for values in lra_data:
             self.bend_table.insert("", "end", values=values)
 
-    def updateCodeBox(self):
+    def update_code_box(self):
         self.codebox.delete(0, END)
         self.linebox.delete(0, END)
-        pointObject = self.gui.point_objects[self.gui.plotIdx]
-        gCode = benderGCode(pointObject)
-        self.gCodeString = gCode.generate_gcode()
+        point_object = self.coords.point_objects[self.coords.plotIdx]
+        gcode = BenderGCode(point_object)
+        self.gCodeString = gcode.generate_gcode()
 
         def tabify(s, tabsize=40):
             return s.ljust(tabsize-len(s))
 
-            # ln = math.floor(((len(s) / tabsize) + 1) * tabsize)
-            # thing = s.ljust(ln)
-            # return thing
-
         for i in range(len(self.gCodeString[0])):
             self.codebox.insert(END, f'  {tabify(self.gCodeString[0][i])}{self.gCodeString[1][i]}')
-            self.linebox.insert(END, f'{i + 1}')
-
-        # for elem in self.gCodeString:
-        #     self.codebox.insert(END, f' {elem}')
-        #     self.linebox.insert(END, f'{i + 1}   ')
-        #     i += 1
+            self.linebox.insert(END, f'{i + 1}   ')
 
 
 if __name__ == "__main__":
     window = Tk()
     window.title('Wire Bender SW')
     window.geometry("1500x900")
-    window.config(background="white")
     window.state('zoomed')
 
+    sv_ttk.set_theme("dark")
+
     # Initialize the GUIManager class
-    gui_manager = GUI(window)
+    gui = GUI(window)
 
     window.mainloop()

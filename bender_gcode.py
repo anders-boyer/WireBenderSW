@@ -1,7 +1,10 @@
-class benderGCode:
-    # References:
-    # https://howtomechatronics.com/tutorials/g-code-explained-list-of-most-important-g-code-commands/
-    # https://www.cnccookbook.com/g-code-basics-program-format-structure-blocks/
+"""
+This class contains the methods for generating a G-Code file from a point_object instance.
+The constructor takes a point_object and copies all important instance variables for G-Code purposes
+
+Anderson Boyer
+"""
+class BenderGCode:
 
     def __init__(self, point_object):
 
@@ -9,39 +12,34 @@ class benderGCode:
         self.R = point_object.R
         self.A = point_object.A
         self.MA = point_object.MA
-
-        self.command_dictionary = {
-            "set to mm": "G21",
-            "Global Coordinates": "G90",  # sets to absolute mode
-            "End Program": "M30",
-            "Home": "G28",
-            "Feed": "G00 ",  # G00 commands movemente at max speed
-            "Bend": "G01 ",  # G01 commands movement at speed set in fourth and final parameter
-            "Rotate": "G00 "
-        }
-
-        self.bend_speed = "100"  # mm/min
-        self.gcode_lines = []
-        self.line_number = 0
+        self.pin_pos = point_object.pin_pos
 
     def generate_gcode(self):
         """
         Generate G-code based on LRA data and save it to a file.
 
         Parameters:
-        - filename: The name of the G-code file to be saved.
-        - bend_pin_location: The selected bend pin location (e.g., "6 mm", "10 mm", "14 mm").
-        - material: The selected material (e.g., "spring steel", "stainless steel", "mild steel", "aluminum").
-        - wire_diameter: The selected wire diameter (e.g., "0.5 mm", "0.75 mm", "1 mm", "1.5 mm", "2 mm").
+        - self
         """
 
-        gCode = []
+        gcode = []
         comment = []
 
-        gCode.append("%")
+        gcode.append("%")
         comment.append("")
 
-        benderPosition = 1
+        gcode.append(f'; For use with {round(self.pin_pos, 1)} mm pin only')
+        comment.append("")
+        gcode.append("")
+        comment.append("")
+        gcode.append("")
+        comment.append("")
+
+        if self.pin_pos > 12.1:
+            gcode.append("M98 P\"not12mm.g\"")
+            comment.append("")
+
+        bender_position = 1
 
         # Initialize current X, Y, Z values
         current_x = 0.0
@@ -54,7 +52,7 @@ class benderGCode:
                 # Update current_x
                 current_x += self.L[i]
                 # Add G1 command for X movement
-                gCode.append(f"G1 X{round(current_x, 2)}")
+                gcode.append(f"G1 X{round(current_x, 2)}")
                 comment.append(f';  Extrude wire {round(self.L[i], 2)} mm')
 
             if (len(self.R) > 0) & (len(self.A) > 0):
@@ -62,67 +60,43 @@ class benderGCode:
                 if abs(self.R[i]) > 0.01:  # Adjust the threshold as needed
                     # Add G1 command for Y movement
                     current_y += self.R[i]
-                    gCode.append(f"G1 Y{round(current_y, 2)}")
-                    comment.append(f';  Rotate wire {round(self.R[i], 2)} degrees')
+                    gcode[-1] = gcode[-1] + f" Y{round(current_y, 2)}"
+                    # gcode.append(f"G1 Y{round(current_y, 2)}")
+                    comment[-1] = comment[-1] + f' and rotate wire {round(self.R[i], 2)} degrees'
+                    # comment.append(f';  Rotate wire {round(self.R[i], 2)} degrees')
 
                 # previous bend was negative, need to duck and move to positive position
-                if (self.A[i] > .02) & (benderPosition == 1):
-                    gCode.append("M106 P0 S1.0")
+                if (self.A[i] > .02) & (bender_position == 1):
+                    gcode.append("M106 P0 S1.0")
                     comment.append(f';  Ducking pin for positive bend')
-                    gCode.append("G1 Z-30")
+                    gcode.append("G0 Z-30")
                     comment.append(f'')
-                    gCode.append("M106 P0 S0")
+                    gcode.append("M106 P0 S0")
                     comment.append(f'')
-                    benderPosition = -1
-                elif (self.A[i] < -.02) & (benderPosition == -1):
-                    gCode.append("M106 P0 S1.0")
+                    bender_position = -1
+                elif (self.A[i] < -.02) & (bender_position == -1):
+                    gcode.append("M106 P0 S1.0")
                     comment.append(f';  Ducking pin for negative bend')
-                    gCode.append("G1 Z30")
+                    gcode.append("G0 Z30")
                     comment.append(f'')
-                    gCode.append("M106 P0 S0")
+                    gcode.append("M106 P0 S0")
                     comment.append(f'')
-                    benderPosition = 1
+                    bender_position = 1
 
                 # Check A value threshold
                 if abs(self.A[i]) > 0.02:  # Adjust the threshold as needed
-                    gCode.append(f"G1 Z{round(self.MA[i], 2)}")
-                    comment.append(f';  Setting motor angle to {round(self.MA[i], 2)} degrees for {round(self.A[i], 2)} degree desired bend')
+                    gcode.append(f"G1 Z{round(self.MA[i], 2)}")
+                    comment.append(f';  Setting motor angle to {round(self.MA[i], 2)} degrees for {round(self.A[i], 2)}'
+                                   f' degree desired bend')
                     if self.A[i] < 0:
-                        gCode.append("G1 Z30")
+                        gcode.append("G0 Z30")
                         comment.append(f';  Return pin to positive position')
-                        benderPosition = 1
+                        bender_position = 1
                     elif self.A[i] > 0:
-                        gCode.append("G1 Z-30")
+                        gcode.append("G0 Z-30")
                         comment.append(f';  Return pin to negative position')
-                        benderPosition = -1
+                        bender_position = -1
 
-        gCode.append("%")
+        gcode.append("%")
         comment.append(0)
-        return [gCode, comment]
-
-
-    # def add_gcode_line(self, line):
-    #     line_number_string = "N"
-    #     if (self.line_number < 10):
-    #         line_number_string += "00"
-    #     elif (self.line_number < 100):
-    #         line_number_string += "0"
-    #
-    #     self.gcode_lines.append(line_number_string + str(self.line_number) + " " + line + "\n")
-    #     self.line_number += 1
-
-    # def write_gcode_lines(self):
-    #     self.gcode_lines.append("%\n")
-    #     self.gcode_lines.append("(Header)\n")
-    #     self.gcode_lines.append("(End Header)\n\n")
-    #     self.add_gcode_line(self.command_dictionary["set to mm"] + "\n")
-    #     self.add_gcode_line(self.command_dictionary["Feed"] + "X20.0 " + "Y0.0 " + "Z0.0")
-    #     self.add_gcode_line(self.command_dictionary["Bend"] + "X0.0 " + "Y0.0 " + "Z90.0 F" + self.bend_speed)
-    #     self.add_gcode_line(self.command_dictionary["Feed"] + "X0.0 " + "Y30.0 " + "Z0.0")
-    #     self.add_gcode_line(self.command_dictionary["End Program"])
-    #     self.gcode_lines.append("%")
-
-    # def write_to_file(self, filename):
-    #     self.file = open(filename + ".gcode", "w")
-    #     self.file.writelines(self.gcode_lines)
-    #     self.file.close()
+        return [gcode, comment]
