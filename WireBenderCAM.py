@@ -158,7 +158,7 @@ class GUI:
             # Save the G-code content to the chosen file
             with open(file_path, 'w') as file:
                 for line1, line2 in zip(self.gCodeString[0], self.gCodeString[1]):
-                    combined_line = f"{line1.ljust(20)}{line2}"  # Adjust the width (20 in this example) based on your needs
+                    combined_line = f"{line1.ljust(25)}{line2}"  # Adjust the width (20 in this example) based on your needs
                     file.write(combined_line + '\n')
 
             # Inform the user that the file has been saved
@@ -282,9 +282,7 @@ class GUI:
             }
 
             material_file = string_to_file_map.get(material_string)
-            if material_file is not None:
-                print(f"The filename for key '{material_string}' is '{material_file}'")
-            else:
+            if material_file is None:
                 print(f"No filename found for key '{material_string}'")
 
             if material_string == "Mild Steel - 1/8 inch":

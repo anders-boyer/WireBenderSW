@@ -141,7 +141,7 @@ class PointObject:
                 arc_length_next = .5 * abs(math.radians(self.A[-1])) * (bend_die_radius + diameter / 2)  # 1/2 arc
                 # length of next bend in mm
                 if i < len(self.X) - 2:  # only add L if this is not the last bend
-                    self.L.append(self.calculate_distance(i, i + 1) - arc_length_prev + arc_length_next)
+                    self.L.append(self.calculate_distance(i, i + 1)) #- arc_length_prev + arc_length_next)
 
                 self.A.append(math.degrees(self.find_rz2(i + 1)))
                 matrix = self.rotation_matrix(self.find_rz2(i + 1), 'z')

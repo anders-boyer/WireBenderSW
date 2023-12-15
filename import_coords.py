@@ -122,7 +122,7 @@ class ImportCoords:
                 else:
                     distance = distance_euclidian - arc_length_prev + arc_length_next
 
-                if distance < self.min_bend_dist(diameter, pin_pos, angle2):
+                if distance < (self.min_bend_dist(diameter, pin_pos, angle2)):
                     if i < len(points.X) - 2:
                         del points.X[i + 1]
                         del points.Y[i + 1]
@@ -208,9 +208,9 @@ class ImportCoords:
         else:
             # Set specific axis limits (calculate min and max values)
             x_min = min(point_object.X)
-            x_max = max(point_object.X)
+            x_max = max(point_object.X) + .01
             y_min = min(point_object.Y)
-            y_max = max(point_object.Y)
+            y_max = max(point_object.Y) + .01
             z_min = min(point_object.Z)
             z_max = max(point_object.Z) + .01
 

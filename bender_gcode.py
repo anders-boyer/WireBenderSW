@@ -35,6 +35,9 @@ class BenderGCode:
         gcode.append("")
         comment.append("")
 
+        gcode.append("G28")
+        comment.append(";   Home all axes")
+
         if self.pin_pos > 12.1:
             gcode.append("M98 P\"not12mm.g\"")
             comment.append("")
@@ -52,18 +55,16 @@ class BenderGCode:
                 # Update current_x
                 current_x += self.L[i]
                 # Add G1 command for X movement
-                gcode.append(f"G1 X{round(current_x, 2)}")
+                gcode.append(f"G0 X{round(current_x, 2)}")
                 comment.append(f';  Extrude wire {round(self.L[i], 2)} mm')
 
             if (len(self.R) > 0) & (len(self.A) > 0):
                 # Check R value threshold
                 if abs(self.R[i]) > 0.01:  # Adjust the threshold as needed
-                    # Add G1 command for Y movement
+                    # Add G1 command for Y movement on same line
                     current_y += self.R[i]
                     gcode[-1] = gcode[-1] + f" Y{round(current_y, 2)}"
-                    # gcode.append(f"G1 Y{round(current_y, 2)}")
                     comment[-1] = comment[-1] + f' and rotate wire {round(self.R[i], 2)} degrees'
-                    # comment.append(f';  Rotate wire {round(self.R[i], 2)} degrees')
 
                 # previous bend was negative, need to duck and move to positive position
                 if (self.A[i] > .02) & (bender_position == 1):
@@ -73,6 +74,8 @@ class BenderGCode:
                     comment.append(f'')
                     gcode.append("M106 P0 S0")
                     comment.append(f'')
+                    gcode.append("G4 P80")
+                    comment.append(f'')
                     bender_position = -1
                 elif (self.A[i] < -.02) & (bender_position == -1):
                     gcode.append("M106 P0 S1.0")
@@ -80,6 +83,8 @@ class BenderGCode:
                     gcode.append("G0 Z30")
                     comment.append(f'')
                     gcode.append("M106 P0 S0")
+                    comment.append(f'')
+                    gcode.append("G4 P80")
                     comment.append(f'')
                     bender_position = 1
 
@@ -97,6 +102,16 @@ class BenderGCode:
                         comment.append(f';  Return pin to negative position')
                         bender_position = -1
 
+        gcode.append("M106 P0 S1.0")
+        comment.append(f';  Ducking pin')
+        if self.A[-1] < 0:
+            gcode.append("G0 Z90")
+        else:
+            gcode.append("G0 Z-90")
+        comment.append(f'')
+        gcode.append("M106 P0 S0")
+        comment.append(f'')
+
         gcode.append("%")
-        comment.append(0)
+        comment.append("")
         return [gcode, comment]
